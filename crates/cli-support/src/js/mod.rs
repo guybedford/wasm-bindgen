@@ -136,6 +136,8 @@ enum ExportJs<'a> {
 const INITIAL_HEAP_VALUES: &[&str] = &["undefined", "null", "true", "false"];
 // Must be kept in sync with `src/lib.rs` of the `wasm-bindgen` crate
 const INITIAL_HEAP_OFFSET: usize = 128;
+const VALUE_SLOT_OFFSET: usize = INITIAL_HEAP_VALUES.len() + INITIAL_HEAP_OFFSET;
+const VALUE_SLOT_CNT: usize = 8;
 
 impl<'a> Context<'a> {
     pub fn new(
@@ -1393,7 +1395,10 @@ __wbg_set_wasm(wasm);"
         self.global(
             "
             function _assertNum(n) {
-                if (typeof(n) !== 'number') throw new Error(`expected a number argument, found ${typeof(n)}`);
+                if (typeof(n) !== 'number') {
+                    process._rawDebug(n);
+                    throw new Error(`expected a number argument, found ${typeof(n)}`);
+                }
             }
             ",
         );
@@ -3633,6 +3638,11 @@ __wbg_set_wasm(wasm);"
                 format!("{} === null", args[0])
             }
 
+            Intrinsic::IsNullOrUndefined => {
+                assert_eq!(args.len(), 1);
+                format!("{} == null", args[0])
+            }
+
             Intrinsic::IsObject => {
                 assert_eq!(args.len(), 1);
                 prelude.push_str(&format!("const val = {};\n", args[0]));
@@ -3809,6 +3819,48 @@ __wbg_set_wasm(wasm);"
                 prelude.push_str("return true;\n");
                 prelude.push_str("}\n");
                 "false".to_string()
+            }
+
+            Intrinsic::NumberNewIntoSlot => {
+                assert_eq!(args.len(), 1);
+                self.global(&format!("let cur_value_slot = {VALUE_SLOT_OFFSET};"));
+                let table = self
+                    .aux
+                    .externref_table
+                    .ok_or_else(|| anyhow!("must enable externref to use externref intrinsic"))?;
+                // Use current slot index, store the number, increment index, return slot index (0-7)
+                let value_slot_last = VALUE_SLOT_OFFSET + VALUE_SLOT_CNT;
+                format!(
+                        "
+                    (function() {{
+                        if (cur_value_slot >= {value_slot_last})
+                            throw new Error('Too many generic parameters - all value slots are in use');
+                        wasm.{}.set(cur_value_slot, {});
+                        return cur_value_slot++ - {VALUE_SLOT_OFFSET};
+                    }})()
+                    ",
+                        self.export_name_of(table),
+                        args[0]
+                    )
+            }
+
+            Intrinsic::ResetSlots => {
+                assert_eq!(args.len(), 0);
+                let table = self
+                    .aux
+                    .externref_table
+                    .ok_or_else(|| anyhow!("must enable externref to use externref intrinsic"))?;
+                // Clear used slots and reset slot index back to 32
+                format!(
+                    "
+                    (function() {{ 
+                        const table = wasm.{};
+                        while (cur_value_slot > {VALUE_SLOT_OFFSET})
+                            table.set(cur_value_slot--, null);
+                    }})()
+                    ",
+                    self.export_name_of(table)
+                )
             }
 
             Intrinsic::NumberGet => {

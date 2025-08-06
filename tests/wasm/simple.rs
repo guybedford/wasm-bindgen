@@ -300,8 +300,36 @@ pub fn do_string_roundtrip(s: String) -> String {
 #[allow(clippy::redundant_clone)] // clone to increase heap live count
 fn externref_heap_live_count() {
     let x = wasm_bindgen::externref_heap_live_count();
-    let y = JsValue::null().clone();
+    let y = JsValue::from_f64(42.0).clone(); // Use non-constant value
     assert!(wasm_bindgen::externref_heap_live_count() > x);
     drop(y);
     assert_eq!(x, wasm_bindgen::externref_heap_live_count());
+}
+
+#[wasm_bindgen_test]
+#[allow(clippy::redundant_clone)] // clone to test constant sharing optimization
+fn constant_cloning_optimization() {
+    let x = wasm_bindgen::externref_heap_live_count();
+
+    // Cloning constants should NOT increase heap live count
+    let null1 = JsValue::null();
+    let null2 = null1.clone();
+    let undef1 = JsValue::undefined();
+    let undef2 = undef1.clone();
+    let true1 = JsValue::from(true);
+    let true2 = true1.clone();
+    let false1 = JsValue::from(false);
+    let false2 = false1.clone();
+
+    // Heap count should be unchanged since all clones are constants
+    assert_eq!(x, wasm_bindgen::externref_heap_live_count());
+
+    // Cloning non-constants SHOULD increase heap live count
+    let num1 = JsValue::from_f64(42.0);
+    let num2 = num1.clone();
+    assert!(wasm_bindgen::externref_heap_live_count() > x);
+
+    drop((
+        null1, null2, undef1, undef2, true1, true2, false1, false2, num1, num2,
+    ));
 }
