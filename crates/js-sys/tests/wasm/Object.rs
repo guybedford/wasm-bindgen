@@ -308,3 +308,37 @@ fn value_of() {
     assert_ne!(a, b);
     assert_ne!(a2, b);
 }
+
+#[wasm_bindgen_test]
+fn entries_typed() {
+    let obj: Object<JsString> = Reflect::construct(&Function::new_no_args(""), &Array::new())
+        .unwrap()
+        .unchecked_into();
+    Reflect::set(&obj, &"a".into(), &JsString::from("1").into()).unwrap();
+    Reflect::set(&obj, &"b".into(), &JsString::from("2").into()).unwrap();
+
+    // entries_typed returns Array<ArrayTuple<JsString, T>>
+    let entries = Object::entries_typed(&obj);
+    assert_eq!(entries.length(), 2);
+
+    // Each entry is [key, value] array
+    let first: Array = entries.get(0).unchecked_into();
+    assert_eq!(first.length(), 2);
+}
+
+#[wasm_bindgen_test]
+fn from_entries_typed() {
+    let entries: Array<ArrayTuple<JsString, JsString>> = Array::new_typed();
+    entries.push(&ArrayTuple::new2(
+        &JsString::from("foo"),
+        &JsString::from("bar"),
+    ));
+    entries.push(&ArrayTuple::new2(
+        &JsString::from("baz"),
+        &JsString::from("qux"),
+    ));
+
+    let obj: Object<JsString> = Object::from_entries_typed(&entries).unwrap();
+    assert_eq!(Reflect::get(&obj, &"foo".into()).unwrap(), "bar");
+    assert_eq!(Reflect::get(&obj, &"baz".into()).unwrap(), "qux");
+}

@@ -317,13 +317,13 @@ export function __wbg__wbg_cb_unref_87dfb5aaa0cbcea7(arg0) {
     arg0._wbg_cb_unref();
 };
 
-export function __wbg_call_3020136f7a2d6e44() { return handleError(function (arg0, arg1, arg2) {
-    const ret = arg0.call(arg1, arg2);
+export function __wbg_call_04a7994486c9e2c3() { return handleError(function (arg0, arg1) {
+    const ret = arg0.call(arg1);
     return ret;
 }, arguments) };
 
-export function __wbg_call_abb4ff46ce38be40() { return handleError(function (arg0, arg1) {
-    const ret = arg0.call(arg1);
+export function __wbg_call_33dce52c801dbe21() { return handleError(function (arg0, arg1, arg2) {
+    const ret = arg0.call(arg1, arg2);
     return ret;
 }, arguments) };
 
@@ -332,7 +332,12 @@ export function __wbg_createTask_432d6d38dc688bee() { return handleError(functio
     return ret;
 }, arguments) };
 
-export function __wbg_new_ff12d2b041fb48f1(arg0, arg1) {
+export function __wbg_new_no_args_cb138f77cf6151ee(arg0, arg1) {
+    const ret = new Function(getStringFromWasm0(arg0, arg1));
+    return ret;
+};
+
+export function __wbg_new_typed_fdb5297761bfbc5c(arg0, arg1) {
     try {
         var state0 = {a: arg0, b: arg1};
         var cb0 = (arg0, arg1) => {
@@ -351,11 +356,6 @@ export function __wbg_new_ff12d2b041fb48f1(arg0, arg1) {
     }
 };
 
-export function __wbg_new_no_args_cb138f77cf6151ee(arg0, arg1) {
-    const ret = new Function(getStringFromWasm0(arg0, arg1));
-    return ret;
-};
-
 export function __wbg_queueMicrotask_9b549dfce8865860(arg0) {
     const ret = arg0.queueMicrotask;
     return ret;
@@ -365,7 +365,7 @@ export function __wbg_queueMicrotask_fca69f5bfad613a5(arg0) {
     queueMicrotask(arg0);
 };
 
-export function __wbg_resolve_fd5bfbaa4ce36e1e(arg0) {
+export function __wbg_resolve_625f33c3f724c126(arg0) {
     const ret = Promise.resolve(arg0);
     return ret;
 };
@@ -409,7 +409,7 @@ export function __wbg_static_accessor_WINDOW_a8924b26aa92d024() {
     return isLikeNone(ret) ? 0 : addToExternrefTable0(ret);
 };
 
-export function __wbg_then_4f95312d68691235(arg0, arg1) {
+export function __wbg_then_84bf0ccdca910f4d(arg0, arg1) {
     const ret = arg0.then(arg1);
     return ret;
 };

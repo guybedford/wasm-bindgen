@@ -98,7 +98,7 @@ use core::fmt::{self, Display};
 use core::future::Future;
 use core::pin::Pin;
 use core::task::{self, Poll};
-use js_sys::{Array, Function, Promise};
+use js_sys::{Array, FunctionArgs, Promise};
 pub use wasm_bindgen;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::future_to_promise;
@@ -398,7 +398,7 @@ impl Context {
         // future onto our `remaining` list, which we'll process later.
         let cx_arg = (self as *const Context as u32).into();
         for test in tests {
-            match Function::from(test).call1(&JsValue::null(), &cx_arg) {
+            match FunctionArgs::<JsValue>::from(test).call1(&JsValue::null(), &cx_arg) {
                 Ok(_) => {}
                 Err(e) => {
                     panic!(

@@ -52,6 +52,8 @@ extern crate alloc;
 #[cfg(feature = "std")]
 extern crate std;
 
+use crate::__rt::marker::SingularGeneric;
+use crate::convert::{TryFromJsValue, VectorIntoWasmAbi};
 use alloc::boxed::Box;
 use alloc::string::String;
 use alloc::vec::Vec;
@@ -61,8 +63,6 @@ use core::ops::{
     Add, BitAnd, BitOr, BitXor, Deref, DerefMut, Div, Mul, Neg, Not, Rem, Shl, Shr, Sub,
 };
 use core::ptr::NonNull;
-
-use crate::convert::{TryFromJsValue, VectorIntoWasmAbi};
 
 const _: () = {
     /// Dummy empty function provided in order to detect linker-injected functions like `__wasm_call_ctors` and others that should be skipped by the wasm-bindgen interpreter.
@@ -136,6 +136,8 @@ use externref::__wbindgen_externref_heap_live_count;
 mod cast;
 pub use crate::cast::JsCast;
 
+pub use crate::__rt::marker::Generic;
+
 mod cache;
 pub use cache::intern::{intern, unintern};
 
@@ -153,6 +155,10 @@ use __rt::wbg_cast;
 pub struct JsValue {
     idx: u32,
     _marker: PhantomData<*mut u8>, // not at all threadsafe
+}
+
+unsafe impl SingularGeneric for JsValue {
+    type Repr = JsValue;
 }
 
 impl JsValue {

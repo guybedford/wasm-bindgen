@@ -4,6 +4,8 @@
 pub mod Array;
 pub mod ArrayBuffer;
 pub mod ArrayIterator;
+pub mod ArrayTuple;
+pub mod ArrayTyped;
 pub mod BigInt;
 pub mod Boolean;
 pub mod DataView;
@@ -22,6 +24,7 @@ pub mod Math;
 pub mod Number;
 pub mod Object;
 pub mod Promise;
+pub mod PromiseTyped;
 pub mod Proxy;
 pub mod RangeError;
 pub mod ReferenceError;
