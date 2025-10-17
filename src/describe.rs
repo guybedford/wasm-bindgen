@@ -8,7 +8,7 @@ use alloc::string::String;
 use alloc::vec::Vec;
 use core::{mem::MaybeUninit, ptr::NonNull};
 
-use crate::{Clamped, JsCast, JsError, JsRef, JsValue};
+use crate::{Clamped, JsCast, JsError, JsValue};
 use cfg_if::cfg_if;
 
 pub use wasm_bindgen_shared::tys::*;
@@ -38,13 +38,6 @@ macro_rules! simple {
     )*)
 }
 
-impl<T> WasmDescribe for JsRef<T> {
-    #[cfg_attr(wasm_bindgen_unstable_test_coverage, coverage(off))]
-    fn describe() {
-        inform(EXTERNREF)
-    }
-}
-
 simple! {
     i8 => I8
     u8 => U8
@@ -62,6 +55,7 @@ simple! {
     f64 => F64
     bool => BOOLEAN
     char => CHAR
+    JsValue => EXTERNREF
 }
 
 cfg_if! {
@@ -201,6 +195,6 @@ impl<T: WasmDescribe> WasmDescribe for Clamped<T> {
 impl WasmDescribe for JsError {
     #[cfg_attr(wasm_bindgen_unstable_test_coverage, coverage(off))]
     fn describe() {
-        inform(EXTERNREF);
+        JsValue::describe();
     }
 }

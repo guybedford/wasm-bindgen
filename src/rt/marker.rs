@@ -37,13 +37,52 @@ pub struct CheckSupportsInstanceProperty<T: SupportsInstanceProperty>(T);
 pub trait SupportsStaticProperty {}
 pub struct CheckSupportsStaticProperty<T: SupportsStaticProperty>(T);
 
-/// Marker type representing an untyped JavaScript value.
+/// Marker trait for singular generics - types with this trait have the same
+/// repr for all generic param values, and can therefore be transmuted on
+/// the singular Repr type representation on ABI boundaries.
 ///
-/// This is the default type parameter for `JsValue<T>`, which means that `JsValue`
-/// without a type parameter is equivalent to `JsValue<AnyType>`. This marker type
-/// provides compatibility with existing code while allowing the generic `JsValue<T>`
-/// system to work alongside these untyped cases.
-///
-/// ```
-#[doc(hidden)]
-pub struct AnyType;
+/// # Safety
+/// This type must only be implemented on types known to be repr[c] equivalent
+/// to their Repr type.
+pub unsafe trait SingularGeneric: Sized {
+    /// The concrete type that the generic can be transmuted on
+    type Repr;
+
+    /// Upcast into the Repr base type.
+    ///
+    /// This is a zero-cost operation that removes the type parameter, converting
+    /// to the standard concrete Repr value.
+    #[inline]
+    fn upcast(self) -> Self::Repr {
+        // in future this can be transmute_unchecked
+        unsafe { core::mem::transmute_copy(&core::mem::ManuallyDrop::new(self)) }
+    }
+
+    /// Upcast into the Repr base type by ref.
+    ///
+    /// This is a zero-cost operation that removes the type parameter, converting
+    /// to the standard concrete Repr value.
+    #[inline]
+    fn upcast_ref(&self) -> &Self::Repr {
+        unsafe { core::mem::transmute(&self) }
+    }
+
+    /// Perform an unchecked cast between singular generics with the same Repr.
+    ///
+    /// This is a zero-cost operation that changes the type parameter without any
+    /// runtime validation. Use with caution - incorrect usage may cause runtime errors.
+    #[inline]
+    fn cast_unchecked<T: SingularGeneric<Repr = Self::Repr>>(self) -> T {
+        // in future this can be transmute_unchecked
+        unsafe { core::mem::transmute_copy(&core::mem::ManuallyDrop::new(self)) }
+    }
+
+    /// Perform an unchecked ref cast between singular generics with the same Repr.
+    ///
+    /// This is a zero-cost operation that changes the type parameter without any
+    /// runtime validation. Use with caution - incorrect usage may cause runtime errors.
+    #[inline]
+    fn cast_unchecked_ref<T: SingularGeneric<Repr = Self::Repr>>(&self) -> &T {
+        unsafe { core::mem::transmute::<&Self, &T>(self) }
+    }
+}

@@ -4,11 +4,12 @@ use core::char;
 use core::mem::{self, ManuallyDrop};
 use core::ptr::NonNull;
 
+use crate::__rt::marker::SingularGeneric;
 use crate::convert::traits::{WasmAbi, WasmPrimitive};
 use crate::convert::TryFromJsValue;
 use crate::convert::{FromWasmAbi, IntoWasmAbi, LongRefFromWasmAbi, RefFromWasmAbi};
 use crate::convert::{OptionFromWasmAbi, OptionIntoWasmAbi, ReturnWasmAbi};
-use crate::{Clamped, JsError, JsRef, JsValue, UnwrapThrowExt, __wbindgen_object_is_undefined};
+use crate::{Clamped, JsError, JsValue, UnwrapThrowExt, __wbindgen_object_is_undefined};
 
 // Primitive types can always be passed over the ABI.
 impl<T: WasmPrimitive> WasmAbi for T {
@@ -342,6 +343,10 @@ impl<T> FromWasmAbi for Option<*const T> {
     }
 }
 
+unsafe impl<T: SingularGeneric> SingularGeneric for Option<T> {
+    type Repr = Option<<T as SingularGeneric>::Repr>;
+}
+
 impl<T> IntoWasmAbi for *mut T {
     type Abi = u32;
 
@@ -416,7 +421,7 @@ impl<T> OptionFromWasmAbi for NonNull<T> {
     }
 }
 
-impl<T> IntoWasmAbi for JsRef<T> {
+impl IntoWasmAbi for JsValue {
     type Abi = u32;
 
     #[inline]
@@ -427,16 +432,16 @@ impl<T> IntoWasmAbi for JsRef<T> {
     }
 }
 
-impl<T> FromWasmAbi for JsRef<T> {
+impl FromWasmAbi for JsValue {
     type Abi = u32;
 
     #[inline]
-    unsafe fn from_abi(js: u32) -> JsRef<T> {
-        core::mem::transmute(JsValue::_new(js))
+    unsafe fn from_abi(js: u32) -> JsValue {
+        JsValue::_new(js)
     }
 }
 
-impl<T> IntoWasmAbi for &JsRef<T> {
+impl IntoWasmAbi for &JsValue {
     type Abi = u32;
 
     #[inline]
@@ -445,19 +450,19 @@ impl<T> IntoWasmAbi for &JsRef<T> {
     }
 }
 
-impl<T> RefFromWasmAbi for JsRef<T> {
+impl RefFromWasmAbi for JsValue {
     type Abi = u32;
-    type Anchor = ManuallyDrop<JsRef<T>>;
+    type Anchor = ManuallyDrop<JsValue>;
 
     #[inline]
     unsafe fn ref_from_abi(js: u32) -> Self::Anchor {
-        ManuallyDrop::new(core::mem::transmute::<JsValue, JsRef<T>>(JsValue::_new(js)))
+        ManuallyDrop::new(JsValue::_new(js))
     }
 }
 
-impl<T> LongRefFromWasmAbi for JsRef<T> {
+impl LongRefFromWasmAbi for JsValue {
     type Abi = u32;
-    type Anchor = JsRef<T>;
+    type Anchor = JsValue;
 
     #[inline]
     unsafe fn long_ref_from_abi(js: u32) -> Self::Anchor {
