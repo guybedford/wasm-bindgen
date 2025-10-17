@@ -1,23 +1,24 @@
 use js_sys::*;
 use std::iter::FromIterator;
-use wasm_bindgen::prelude::*;
+use wasm_bindgen::{convert::FromWasmAbi, prelude::*, ErasableGeneric};
+use wasm_bindgen_futures::JsFuture;
 use wasm_bindgen_test::*;
 
 macro_rules! js_array {
-    ($($e:expr),*) => ({
-        let __x = Array::new();
-        $(__x.push(&JsValue::from($e));)*
+    ($t:ty; $($e:expr),*) => ({
+        let __x: Array<$t> = Array::new_typed();
+        $(__x.push(&<$t>::from($e));)*
         __x
     })
 }
 
 macro_rules! array {
-    ($($e:expr),*) => ({
-        vec![$(JsValue::from($e)),*]
+    ($t:ty; $($e:expr),*) => ({
+        vec![$(<$t>::from($e)),*]
     })
 }
 
-fn to_rust(arr: &Array) -> Vec<JsValue> {
+fn to_rust<T: ErasableGeneric<Repr = JsValue> + FromWasmAbi>(arr: &Array<T>) -> Vec<T> {
     let mut result = Vec::with_capacity(arr.length() as usize);
     arr.for_each(&mut |x, _, _| result.push(x));
     result
@@ -43,15 +44,20 @@ fn from_iter() {
         vec!["a", "b", "c"],
     );
 
-    let array = js_array![1u32, 2u32, 3u32];
+    let array = js_array![Number; 1u32, 2u32, 3u32];
 
     assert_eq!(
-        to_rust(&vec![array.clone(),].into_iter().collect()),
+        to_rust(
+            &vec![array.clone(),]
+                .into_iter()
+                .map(JsValue::from)
+                .collect()
+        ),
         vec![JsValue::from(array.clone())],
     );
 
     assert_eq!(
-        to_rust(&[array.clone()].iter().collect()),
+        to_rust(&[array.clone()].iter().map(JsValue::from).collect()),
         vec![JsValue::from(array)],
     );
 
@@ -79,9 +85,9 @@ fn from_iter() {
 
 #[wasm_bindgen_test]
 fn extend() {
-    let mut array = array!["a", "b"];
-    array.extend(vec![JsValue::from("c"), JsValue::from("d")]);
-    assert_eq!(array, array!["a", "b", "c", "d"]);
+    let mut array = array![JsString; "a", "b"];
+    array.extend(vec![JsString::from("c"), JsString::from("d")]);
+    assert_eq!(array, array![JsString; "a", "b", "c", "d"]);
 }
 
 #[wasm_bindgen_test]
@@ -155,66 +161,107 @@ fn iter() {
 
 #[wasm_bindgen_test]
 fn new_with_length() {
-    let array = Array::new_with_length(5);
+    let array: Array<JsValue> = Array::new_with_length(5);
     assert_eq!(array.length(), 5);
+    #[cfg(not(js_sys_unstable_apis))]
     assert_eq!(array.get(4), JsValue::undefined());
+    #[cfg(js_sys_unstable_apis)]
+    assert_eq!(array.get(4), None);
+    #[cfg(not(js_sys_unstable_apis))]
     array.set(4, JsValue::from("a"));
+    #[cfg(js_sys_unstable_apis)]
+    array.set(4, &JsValue::from("a"));
+    #[cfg(not(js_sys_unstable_apis))]
     assert_eq!(array.get(4), "a");
+    #[cfg(js_sys_unstable_apis)]
+    assert_eq!(array.get(4), Some("a".into()));
     assert_eq!(array.length(), 5);
 }
 
 #[wasm_bindgen_test]
 fn get() {
-    let array = js_array!["a", "c", "x", "n"];
+    let array = js_array![JsValue; "a", "c", "x", "n"];
     assert_eq!(array.length(), 4);
-    assert_eq!(array.get(0), "a");
-    assert_eq!(array.get(3), "n");
-    assert_eq!(array.get(4), JsValue::undefined());
+    #[cfg(not(js_sys_unstable_apis))]
+    {
+        assert_eq!(array.get(0), "a");
+        assert_eq!(array.get(3), "n");
+        assert_eq!(array.get(4), JsValue::undefined());
+    }
+    #[cfg(js_sys_unstable_apis)]
+    {
+        assert_eq!(array.get(0), Some("a".into()));
+        assert_eq!(array.get(3), Some("n".into()));
+        assert_eq!(array.get(4), None);
+    }
 }
 
 #[wasm_bindgen_test]
 fn set() {
-    let array = js_array!["a", "c", "x", "n"];
+    let array = js_array![JsValue; "a", "c", "x", "n"];
     assert_eq!(array.length(), 4);
+    #[cfg(not(js_sys_unstable_apis))]
     assert_eq!(array.get(0), "a");
-    array.set(0, JsValue::from("b"));
+    #[cfg(js_sys_unstable_apis)]
+    assert_eq!(array.get(0), Some("a".into()));
+    array.set_ref(0, &JsValue::from("b"));
+    #[cfg(not(js_sys_unstable_apis))]
     assert_eq!(array.get(0), "b");
+    #[cfg(js_sys_unstable_apis)]
+    assert_eq!(array.get(0), Some("b".into()));
 
+    #[cfg(not(js_sys_unstable_apis))]
     assert_eq!(array.get(4), JsValue::undefined());
+    #[cfg(js_sys_unstable_apis)]
+    assert_eq!(array.get(4), None);
     assert_eq!(array.length(), 4);
-    array.set(4, JsValue::from("d"));
+    array.set_ref(4, &JsValue::from("d"));
     assert_eq!(array.length(), 5);
+    #[cfg(not(js_sys_unstable_apis))]
     assert_eq!(array.get(4), "d");
+    #[cfg(js_sys_unstable_apis)]
+    assert_eq!(array.get(4), Some("d".into()));
 
-    assert_eq!(array.get(10), JsValue::undefined());
+    assert_eq!(array.get_checked(10), None);
     assert_eq!(array.length(), 5);
-    array.set(10, JsValue::from("z"));
+    array.set_ref(10, &JsValue::from("z"));
     assert_eq!(array.length(), 11);
-    assert_eq!(array.get(10), "z");
-    assert_eq!(array.get(9), JsValue::undefined());
+    assert_eq!(array.get_checked(10), Some("z".into()));
+    assert_eq!(array.get_checked(9), None);
 }
 
 #[wasm_bindgen_test]
 fn delete() {
-    let array = js_array!["a", "c", "x", "n"];
+    let array = js_array![JsValue; "a", "c", "x", "n"];
     assert_eq!(array.length(), 4);
+    #[cfg(not(js_sys_unstable_apis))]
     assert_eq!(array.get(0), "a");
+    #[cfg(js_sys_unstable_apis)]
+    assert_eq!(array.get(0), Some("a".into()));
     array.delete(0);
+    #[cfg(not(js_sys_unstable_apis))]
     assert_eq!(array.get(0), JsValue::undefined());
+    #[cfg(js_sys_unstable_apis)]
+    assert_eq!(array.get(0), None);
 }
 
 #[wasm_bindgen_test]
 fn filter() {
-    let array = js_array!["a", "c", "x", "n"];
-    assert!(array.filter(&mut |x, _, _| x.as_f64().is_some()).length() == 0);
+    let array = js_array![JsValue; "a", "c", "x", "n"];
+    assert!(
+        array
+            .filter(&mut |x: JsValue, _, _| { x.as_f64().is_some() })
+            .length()
+            == 0
+    );
 
-    let array = js_array![1, 2, 3, 4];
+    let array = js_array![Number; 1, 2, 3, 4];
     assert_eq!(
         array.filter(&mut |x, _, _| x.as_f64().is_some()).length(),
         4
     );
 
-    let array = js_array!["a", 1, "b", 2];
+    let array = js_array![JsValue; "a", 1, "b", 2];
     assert_eq!(
         array.filter(&mut |x, _, _| x.as_f64().is_some()).length(),
         2
@@ -224,9 +271,10 @@ fn filter() {
 #[wasm_bindgen_test]
 fn flat() {
     let array = js_array![
-        js_array!["a", "b", "c"],
+        JsValue;
+        js_array![JsValue; "a", "b", "c"],
         "d",
-        js_array!["e", js_array!["f", "g"]]
+        js_array![JsValue; "e", js_array![JsValue; "f", "g"]]
     ];
 
     assert_eq!(
@@ -244,24 +292,24 @@ fn flat() {
 
 #[wasm_bindgen_test]
 fn flat_map() {
-    let array = js_array![1, 2, 3, 1];
+    let array = js_array![JsValue; 1, 2, 3, 1];
 
     assert_eq!(
-        to_rust(
-            &array.flat_map(&mut |val, _, _| match val.as_f64().map(|v| v as i32) {
+        to_rust(&array.flat_map::<JsValue>(
+            &mut |val, _, _| match val.as_f64().map(|v| v as i32) {
                 Some(1) => vec![JsString::from("x").into(), JsString::from("x").into()],
                 Some(2) => vec![],
                 Some(3) => vec![JsString::from("z").into()],
                 _ => panic!("Unexpected conversion"),
-            })
-        ),
+            }
+        )),
         vec!["x", "x", "z", "x", "x"]
     );
 }
 
 #[wasm_bindgen_test]
 fn index_of() {
-    let chars = js_array!["a", "c", "x", "n"];
+    let chars = js_array![JsString; "a", "c", "x", "n"];
     assert_eq!(chars.index_of(&"x".into(), 0), 2);
     assert_eq!(chars.index_of(&"z".into(), 0), -1);
     assert_eq!(chars.index_of(&"x".into(), -3), 2);
@@ -270,8 +318,9 @@ fn index_of() {
 
 #[wasm_bindgen_test]
 fn is_array() {
-    assert!(Array::is_array(&Array::new().into()));
-    assert!(Array::is_array(&js_array![1].into()));
+    let arr: Array<JsValue> = Array::new();
+    assert!(Array::is_array(&arr.into()));
+    assert!(Array::is_array(&js_array![Number; 1].into()));
     assert!(!Array::is_array(&JsValue::null()));
     assert!(!Array::is_array(&JsValue::undefined()));
     assert!(!Array::is_array(&10.into()));
@@ -282,15 +331,15 @@ fn is_array() {
 
 #[wasm_bindgen_test]
 fn sort() {
-    let array = js_array![3, 1, 6, 2];
+    let array = js_array![Number; 3, 1, 6, 2];
     let sorted = array.sort();
-    assert_eq!(to_rust(&sorted), array![1, 2, 3, 6]);
+    assert_eq!(to_rust(&sorted), array![Number; 1, 2, 3, 6]);
 }
 
 #[wasm_bindgen_test]
 #[allow(clippy::cmp_owned)]
 fn some() {
-    let array = js_array!["z", 1, "y", 2];
+    let array = js_array![JsValue; "z", 1, "y", 2];
     assert!(array.some(&mut |e| e == JsValue::from(2)));
     assert!(array.some(&mut |e| e == JsValue::from("y")));
     assert!(!array.some(&mut |e| e == JsValue::from("nope")));
@@ -298,7 +347,7 @@ fn some() {
 
 #[wasm_bindgen_test]
 fn last_index_of() {
-    let characters = js_array!["a", "x", "c", "x", "n"];
+    let characters = js_array![JsString; "a", "x", "c", "x", "n"];
     assert_eq!(characters.last_index_of(&"x".into(), 5), 3);
     assert_eq!(characters.last_index_of(&"z".into(), 5), -1);
     assert_eq!(characters.last_index_of(&"x".into(), 2), 1);
@@ -307,46 +356,46 @@ fn last_index_of() {
 
 #[wasm_bindgen_test]
 fn join() {
-    let characters = js_array!["a", "c", "x", "n"];
+    let characters = js_array![JsString; "a", "c", "x", "n"];
     assert_eq!(String::from(characters.join(", ")), "a, c, x, n");
     assert_eq!(String::from(characters.join("/")), "a/c/x/n");
 }
 
 #[wasm_bindgen_test]
 fn slice() {
-    let characters = js_array!["a", "c", "x", "n", 1, "8"];
+    let characters = js_array![JsValue; "a", "c", "x", "n", 1, "8"];
     let subset = characters.slice(1, 3);
 
-    assert_eq!(to_rust(&subset), array!["c", "x"]);
+    assert_eq!(to_rust(&subset), array![JsValue; "c", "x"]);
 }
 
 #[wasm_bindgen_test]
 fn splice() {
-    let characters = js_array!["a", "c", "x", "n", 1, "8"];
+    let characters = js_array![JsValue; "a", "c", "x", "n", 1, "8"];
     let removed = characters.splice(1, 3, &"b".into());
 
-    assert_eq!(to_rust(&removed), array!["c", "x", "n"]);
-    assert_eq!(to_rust(&characters), array!["a", "b", 1, "8"]);
+    assert_eq!(to_rust(&removed), array![JsValue; "c", "x", "n"]);
+    assert_eq!(to_rust(&characters), array![JsValue; "a", "b", 1, "8"]);
 }
 
 #[wasm_bindgen_test]
 fn fill() {
-    let characters = js_array!["a", "c", "x", "n", 1, "8"];
+    let characters = js_array![JsValue; "a", "c", "x", "n", 1, "8"];
     let subset = characters.fill(&0.into(), 0, 3);
 
-    assert_eq!(to_rust(&subset), array![0, 0, 0, "n", 1, "8"]);
+    assert_eq!(to_rust(&subset), array![JsValue; 0, 0, 0, "n", 1, "8"]);
 }
 
 #[wasm_bindgen_test]
 fn copy_within() {
-    let characters = js_array![8, 5, 4, 3, 1, 2];
+    let characters = js_array![Number; 8, 5, 4, 3, 1, 2];
     characters.copy_within(1, 4, 5);
 
-    assert_eq!(to_rust(&characters)[1], JsValue::from(1));
+    assert_eq!(to_rust(&characters)[1], Number::from(1));
 
     // if negatives were used
     characters.copy_within(-1, -3, -2);
-    assert_eq!(to_rust(&characters)[5], JsValue::from(3));
+    assert_eq!(to_rust(&characters)[5], Number::from(3));
 }
 
 #[wasm_bindgen_test]
@@ -354,7 +403,13 @@ fn of() {
     let a = JsValue::from("a");
     let b = JsValue::from("b");
     let c = JsValue::from("c");
-    let arr = Array::of3(&a, &b, &c);
+    #[cfg(not(js_sys_unstable_apis))]
+    let arr = {
+        #[allow(deprecated)]
+        Array::of3(&a, &b, &c)
+    };
+    #[cfg(js_sys_unstable_apis)]
+    let arr = Array::of(&[a.clone(), b.clone(), c.clone()]);
     let vec = to_rust(&arr);
     assert_eq!(vec.len(), 3);
     assert_eq!(vec[0], a);
@@ -364,15 +419,18 @@ fn of() {
 
 #[wasm_bindgen_test]
 fn pop() {
-    let characters = js_array![8, 5, 4, 3, 1, 2];
+    let characters = js_array![JsValue; 8, 5, 4, 3, 1, 2];
     let item = characters.pop();
+    #[cfg(not(js_sys_unstable_apis))]
     assert_eq!(item, JsValue::from(2));
+    #[cfg(js_sys_unstable_apis)]
+    assert_eq!(item, Some(JsValue::from(2)));
     assert_eq!(characters.length(), 5);
 }
 
 #[wasm_bindgen_test]
 fn push() {
-    let characters = js_array![8, 5, 4, 3, 1, 2];
+    let characters = js_array![JsValue; 8, 5, 4, 3, 1, 2];
     let length = characters.push(&"a".into());
     assert_eq!(length, 7);
     assert_eq!(to_rust(&characters)[6], "a");
@@ -380,38 +438,42 @@ fn push() {
 
 #[wasm_bindgen_test]
 fn reverse() {
-    let characters = js_array![8, 5, 4, 3, 1, 2];
+    let characters = js_array![JsValue; 8, 5, 4, 3, 1, 2];
     let reversed = characters.reverse();
-    assert_eq!(to_rust(&reversed), array![2, 1, 3, 4, 5, 8]);
+    assert_eq!(to_rust(&reversed), array![JsValue; 2, 1, 3, 4, 5, 8]);
 }
 
 #[wasm_bindgen_test]
 fn shift() {
-    let characters = js_array![8, 5, 4, 3, 1, 2];
-    let shiftedItem = characters.shift();
+    let characters = js_array![JsValue; 8, 5, 4, 3, 1, 2];
+    let shifted_item = characters.shift();
 
-    assert_eq!(shiftedItem, 8);
+    #[cfg(not(js_sys_unstable_apis))]
+    assert_eq!(shifted_item, 8);
+    #[cfg(js_sys_unstable_apis)]
+    assert_eq!(shifted_item, Some(JsValue::from(8)));
     assert_eq!(characters.length(), 5);
 }
 
 #[wasm_bindgen_test]
 fn unshift() {
-    let characters = js_array![8, 5, 4, 3, 1, 2];
+    let characters = js_array![JsValue; 8, 5, 4, 3, 1, 2];
     let length = characters.unshift(&"abba".into());
 
     assert_eq!(length, 7);
     assert_eq!(to_rust(&characters)[0], "abba");
 }
 
+#[allow(deprecated)]
 #[wasm_bindgen_test]
 fn to_string() {
-    let characters = js_array![8, 5, 4, 3, 1, 2];
+    let characters = js_array![Number; 8, 5, 4, 3, 1, 2];
     assert_eq!(String::from(characters.to_string()), "8,5,4,3,1,2");
 }
 
 #[wasm_bindgen_test]
 fn includes() {
-    let characters = js_array![8, 5, 4, 3, 1, 2];
+    let characters = js_array![Number; 8, 5, 4, 3, 1, 2];
     assert!(characters.includes(&2.into(), 0));
     assert!(!characters.includes(&9.into(), 0));
     assert!(!characters.includes(&3.into(), 4));
@@ -419,79 +481,123 @@ fn includes() {
 
 #[wasm_bindgen_test]
 fn concat() {
-    let arr1 = js_array![1, 2, 3];
-    let arr2 = js_array![4, 5, 6];
+    let arr1 = js_array![Number; 1, 2, 3];
+    let arr2 = js_array![Number; 4, 5, 6];
 
     let new_array = arr1.concat(&arr2);
-    assert_eq!(to_rust(&new_array), array![1, 2, 3, 4, 5, 6]);
+    assert_eq!(to_rust(&new_array), array![Number; 1, 2, 3, 4, 5, 6]);
 }
 
 #[wasm_bindgen_test]
 fn length() {
-    let characters = js_array![8, 5, 4, 3, 1, 2];
+    let characters = js_array![Number; 8, 5, 4, 3, 1, 2];
     assert_eq!(characters.length(), 6);
-    assert_eq!(Array::new().length(), 0);
+    assert_eq!(Array::<JsValue>::new().length(), 0);
 }
 
 #[wasm_bindgen_test]
 fn every() {
-    let even = js_array![2, 4, 6, 8];
+    let even = js_array![Number; 2, 4, 6, 8];
     assert!(even.every(&mut |x, _, _| x.as_f64().unwrap() % 2.0 == 0.0));
-    let odd = js_array![1, 3, 5, 7];
+    let odd = js_array![Number; 1, 3, 5, 7];
     assert!(!odd.every(&mut |x, _, _| x.as_f64().unwrap() % 2.0 == 0.0));
-    let mixed = js_array![2, 3, 4, 5];
+    let mixed = js_array![Number; 2, 3, 4, 5];
     assert!(!mixed.every(&mut |x, _, _| x.as_f64().unwrap() % 2.0 == 0.0));
 }
 
 #[wasm_bindgen_test]
 fn find() {
-    let even = js_array![2, 4, 6, 8];
+    let even = js_array![JsValue; 2, 4, 6, 8];
+    #[cfg(not(js_sys_unstable_apis))]
     assert_eq!(
         even.find(&mut |x, _, _| x.as_f64().unwrap() % 2.0 == 0.0),
         2
     );
-    let odd = js_array![1, 3, 5, 7];
+    #[cfg(js_sys_unstable_apis)]
+    assert_eq!(
+        even.find(&mut |x, _, _| x.as_f64().unwrap() % 2.0 == 0.0),
+        Some(JsValue::from(2))
+    );
+    let odd = js_array![JsValue; 1, 3, 5, 7];
+    #[cfg(not(js_sys_unstable_apis))]
     assert_eq!(
         odd.find(&mut |x, _, _| x.as_f64().unwrap() % 2.0 == 0.0),
         JsValue::undefined(),
     );
-    let mixed = js_array![3, 5, 7, 10];
+    #[cfg(js_sys_unstable_apis)]
+    assert_eq!(
+        odd.find(&mut |x, _, _| x.as_f64().unwrap() % 2.0 == 0.0),
+        None,
+    );
+    let mixed = js_array![JsValue; 3, 5, 7, 10];
+    #[cfg(not(js_sys_unstable_apis))]
     assert_eq!(
         mixed.find(&mut |x, _, _| x.as_f64().unwrap() % 2.0 == 0.0),
         10
+    );
+    #[cfg(js_sys_unstable_apis)]
+    assert_eq!(
+        mixed.find(&mut |x, _, _| x.as_f64().unwrap() % 2.0 == 0.0),
+        Some(JsValue::from(10))
     );
 }
 
 #[wasm_bindgen_test]
 fn find_last() {
-    let even = js_array![2, 4, 6, 8];
+    let even = js_array![JsValue; 2, 4, 6, 8];
+    #[cfg(not(js_sys_unstable_apis))]
     assert_eq!(
         even.find_last(&mut |x, _, _| x.as_f64().unwrap() % 2.0 == 0.0),
         8
     );
-    let odd = js_array![1, 3, 5, 7];
+    #[cfg(js_sys_unstable_apis)]
+    assert_eq!(
+        even.find_last(&mut |x, _| x.as_f64().unwrap() % 2.0 == 0.0),
+        Some(JsValue::from(8))
+    );
+    let odd = js_array![JsValue; 1, 3, 5, 7];
+    #[cfg(not(js_sys_unstable_apis))]
     assert_eq!(
         odd.find_last(&mut |x, _, _| x.as_f64().unwrap() % 2.0 == 0.0),
         JsValue::undefined(),
     );
-    let mixed = js_array![3, 5, 7, 10];
+    #[cfg(js_sys_unstable_apis)]
+    assert_eq!(
+        odd.find_last(&mut |x, _| x.as_f64().unwrap() % 2.0 == 0.0),
+        None,
+    );
+    let mixed = js_array![JsValue; 3, 5, 7, 10];
+    #[cfg(not(js_sys_unstable_apis))]
     assert_eq!(
         mixed.find_last(&mut |x, _, _| x.as_f64().unwrap() % 2.0 != 0.0),
         7
+    );
+    #[cfg(js_sys_unstable_apis)]
+    assert_eq!(
+        mixed.find_last(&mut |x, _| x.as_f64().unwrap() % 2.0 != 0.0),
+        Some(JsValue::from(7))
     );
 }
 
 #[wasm_bindgen_test]
 fn map() {
-    let numbers = js_array![1, 4, 9];
-    let sqrt = numbers.map(&mut |x, _, _| x.as_f64().unwrap().sqrt().into());
-    assert_eq!(to_rust(&sqrt), array![1, 2, 3]);
+    let numbers = js_array![Number; 1, 4, 9];
+    let sqrt: Array<Number> = numbers.map(&mut |x, _, _| x.as_f64().unwrap().sqrt().into());
+    assert_eq!(to_rust(&sqrt), array![Number; 1, 2, 3]);
 }
 
 #[wasm_bindgen_test]
 fn reduce() {
-    let arr = js_array!["0", "1", "2", "3", "4"].reduce(
+    #[cfg(not(js_sys_unstable_apis))]
+    let arr = js_array![JsString; "0", "1", "2", "3", "4"].reduce(
         &mut |ac, cr, _, _| {
+            format!("{}{}", &ac.as_string().unwrap(), &cr.as_string().unwrap()).into()
+        },
+        &"".into(),
+    );
+    #[cfg(js_sys_unstable_apis)]
+    let arr = js_array![JsString; "0", "1", "2", "3", "4"].reduce(
+        &mut |ac: JsValue, cr: JsString, _, _| {
             format!("{}{}", &ac.as_string().unwrap(), &cr.as_string().unwrap()).into()
         },
         &"".into(),
@@ -501,8 +607,16 @@ fn reduce() {
 
 #[wasm_bindgen_test]
 fn reduce_right() {
-    let arr = js_array!["0", "1", "2", "3", "4"].reduce_right(
+    #[cfg(not(js_sys_unstable_apis))]
+    let arr = js_array![JsString; "0", "1", "2", "3", "4"].reduce_right(
         &mut |ac, cr, _, _| {
+            format!("{}{}", &ac.as_string().unwrap(), &cr.as_string().unwrap()).into()
+        },
+        &"".into(),
+    );
+    #[cfg(js_sys_unstable_apis)]
+    let arr = js_array![JsString; "0", "1", "2", "3", "4"].reduce_right(
+        &mut |ac: JsValue, cr: JsString, _, _| {
             format!("{}{}", &ac.as_string().unwrap(), &cr.as_string().unwrap()).into()
         },
         &"".into(),
@@ -512,17 +626,17 @@ fn reduce_right() {
 
 #[wasm_bindgen_test]
 fn find_index() {
-    let even = js_array![2, 4, 6, 8];
+    let even = js_array![Number; 2, 4, 6, 8];
     assert_eq!(
         even.find_index(&mut |e, _, _| e.as_f64().unwrap() % 2. == 0.),
         0
     );
-    let odd = js_array![1, 3, 5, 7];
+    let odd = js_array![Number; 1, 3, 5, 7];
     assert_eq!(
         odd.find_index(&mut |e, _, _| e.as_f64().unwrap() % 2. == 0.),
         -1
     );
-    let mixed = js_array![3, 5, 7, 10];
+    let mixed = js_array![Number; 3, 5, 7, 10];
     assert_eq!(
         mixed.find_index(&mut |e, _, _| e.as_f64().unwrap() % 2. == 0.),
         3
@@ -531,17 +645,17 @@ fn find_index() {
 
 #[wasm_bindgen_test]
 fn find_last_index() {
-    let even = js_array![2, 4, 6, 8];
+    let even = js_array![Number; 2, 4, 6, 8];
     assert_eq!(
         even.find_last_index(&mut |e, _, _| e.as_f64().unwrap() % 2. == 0.),
         3
     );
-    let odd = js_array![1, 3, 5, 7];
+    let odd = js_array![Number; 1, 3, 5, 7];
     assert_eq!(
         odd.find_last_index(&mut |e, _, _| e.as_f64().unwrap() % 2. == 0.),
         -1
     );
-    let mixed = js_array![3, 5, 7, 10];
+    let mixed = js_array![Number; 3, 5, 7, 10];
     assert_eq!(
         mixed.find_last_index(&mut |e, _, _| e.as_f64().unwrap() % 2. != 0.),
         2
@@ -550,30 +664,42 @@ fn find_last_index() {
 
 #[wasm_bindgen_test]
 fn to_locale_string() {
-    let output = js_array![1, "a", Date::new(&"21 Dec 1997 14:12:00 UTC".into())]
-        .to_locale_string(&"en".into(), &JsValue::undefined());
-    assert!(!String::from(output).is_empty());
+    #[cfg(not(js_sys_unstable_apis))]
+    {
+        let output = js_array![JsValue; 1, "a", Date::new(&"21 Dec 1997 14:12:00 UTC".into())]
+            .to_locale_string(&"en".into(), &JsValue::undefined());
+        assert!(!String::from(output).is_empty());
+    }
+    #[cfg(js_sys_unstable_apis)]
+    {
+        let output = js_array![JsValue; 1, "a", Date::new(&"21 Dec 1997 14:12:00 UTC".into())]
+            .to_locale_string(&[JsString::from("en")], &Default::default());
+        assert!(!String::from(output).is_empty());
+    }
 }
 
 #[wasm_bindgen_test]
 fn for_each() {
-    fn sum_indices_of_evens(array: &Array) -> u32 {
+    fn sum_indices_of_evens(array: &Array<Number>) -> u32 {
         let mut res = 0;
-        array.for_each(&mut |elem: JsValue, i, _| match elem.as_f64() {
+        array.for_each(&mut |elem: Number, i, _| match elem.as_f64() {
             Some(val) if val % 2. == 0. => res += i,
             _ => {}
         });
         res
     }
 
-    assert_eq!(sum_indices_of_evens(&js_array![2, 4, 6, 8]), 1 + 2 + 3);
-    assert_eq!(sum_indices_of_evens(&js_array![1, 3, 5, 7]), 0);
-    assert_eq!(sum_indices_of_evens(&js_array![3, 5, 7, 10]), 3);
+    assert_eq!(
+        sum_indices_of_evens(&js_array![Number; 2, 4, 6, 8]),
+        1 + 2 + 3
+    );
+    assert_eq!(sum_indices_of_evens(&js_array![Number; 1, 3, 5, 7]), 0);
+    assert_eq!(sum_indices_of_evens(&js_array![Number; 3, 5, 7, 10]), 3);
 }
 
 #[wasm_bindgen_test]
 fn set_length() {
-    let array = js_array![1, 2, 3, 4, 5];
+    let array = js_array![JsValue; 1, 2, 3, 4, 5];
     array.set_length(3);
     assert_eq!(
         array.iter().collect::<Vec<_>>(),
@@ -600,7 +726,7 @@ fn set_length() {
 
 #[wasm_bindgen_test]
 fn array_inheritance() {
-    let array = Array::new();
+    let array: Array<JsValue> = Array::new();
     assert!(array.is_instance_of::<Array>());
     assert!(array.is_instance_of::<Object>());
     let _: &Object = array.as_ref();
@@ -609,6 +735,12 @@ fn array_inheritance() {
 #[wasm_bindgen(module = "tests/wasm/Array.js")]
 extern "C" {
     fn populate_array(arr: JsValue, start: JsValue, len: JsValue) -> JsValue;
+
+    #[wasm_bindgen(js_name = createAsyncIterable)]
+    fn create_async_iterable_str(values: &Array<JsString>) -> AsyncIterator<JsString>;
+
+    #[wasm_bindgen(js_name = createAsyncIterable)]
+    fn create_async_iterable_num(values: &Array<Number>) -> AsyncIterator<Number>;
 }
 
 fn test_array_view_mut_raw<ElemT: std::cmp::PartialEq + std::fmt::Debug, ArrT>(
@@ -705,4 +837,111 @@ fn Float32Array_view_mut_raw() {
 #[wasm_bindgen_test]
 fn Float64Array_view_mut_raw() {
     test_array_view_mut_raw(js_sys::Float64Array::view_mut_raw, f64::from, JsValue::from);
+}
+
+#[wasm_bindgen_test]
+async fn from_async() {
+    // Check if Array.fromAsync exists (not available in all browsers)
+    let array_constructor = Array::<JsValue>::new().constructor();
+    if Reflect::get_str(array_constructor.as_ref(), &"fromAsync".into())
+        .unwrap()
+        .unwrap()
+        .is_undefined()
+    {
+        return;
+    }
+
+    let source = js_array![Number; 10, 20, 30];
+
+    let async_iterable = create_async_iterable_num(&source);
+
+    let promise = Array::from_async(&async_iterable).unwrap();
+
+    let result = JsFuture::from(promise).await.unwrap();
+
+    assert_eq!(result.length(), 3);
+    assert_eq!(to_rust(&result), array![Number; 10, 20, 30]);
+}
+
+#[wasm_bindgen_test]
+async fn from_async_map() {
+    use wasm_bindgen::prelude::Closure;
+
+    // Check if Array.fromAsync exists (not available in all browsers)
+    let array_constructor = Array::<JsValue>::new().constructor();
+    if Reflect::get_str(array_constructor.as_ref(), &"fromAsync".into())
+        .unwrap()
+        .unwrap()
+        .is_undefined()
+    {
+        return;
+    }
+
+    let source: Array<Number> = js_array![Number; 1, 2, 3, 4, 5].unchecked_into();
+
+    let async_iterable = create_async_iterable_num(&source);
+
+    let map_fn = Closure::new(|val: Number, _idx: u32| {
+        let num = val.as_f64().unwrap();
+        Ok(Number::from(num * 2.0))
+    });
+
+    let promise = Array::from_async_map(&async_iterable, &map_fn).unwrap();
+    let result = JsFuture::from(promise).await.unwrap();
+
+    assert_eq!(result.length(), 5);
+    assert_eq!(to_rust(&result), array![Number; 2, 4, 6, 8, 10]);
+}
+
+#[wasm_bindgen_test]
+async fn from_async_map_with_index() {
+    use wasm_bindgen::prelude::Closure;
+
+    // Check if Array.fromAsync exists (not available in all browsers)
+    let array_constructor = Array::<JsValue>::new().constructor();
+    if Reflect::get_str(array_constructor.as_ref(), &"fromAsync".into())
+        .unwrap()
+        .unwrap()
+        .is_undefined()
+    {
+        return;
+    }
+
+    let source = js_array![JsString; "a", "b", "c"];
+
+    let async_iterable = create_async_iterable_str(&source);
+
+    let map_fn = Closure::new(|val: JsString, idx: u32| {
+        let s = val.as_string().unwrap();
+        Ok(Promise::resolve(&JsString::from(format!("{}{}", s, idx))))
+    });
+
+    let promise = Array::from_async_map(&async_iterable, &map_fn).unwrap();
+    let result = JsFuture::from(promise).await.unwrap();
+
+    assert_eq!(result.length(), 3);
+    assert_eq!(to_rust(&result), array![JsString; "a0", "b1", "c2"]);
+}
+
+#[wasm_bindgen_test]
+fn covariance() {
+    use wasm_bindgen::prelude::Upcast;
+
+    // Helper function that accepts Array<JsValue>
+    fn accepts_jsvalue_array(arr: Array<JsValue>) -> u32 {
+        arr.length()
+    }
+
+    // Create an Array<Number>
+    let number_array = js_array![Number; 1u32, 2u32, 3u32];
+
+    // Test that we can pass Array<Number> where Array<JsValue> is expected
+    // This works because Number is covariant to JsValue
+    let length = accepts_jsvalue_array(number_array.upcast());
+    assert_eq!(length, 3);
+
+    // Also test with Array<JsString>
+    let string_array = js_array![JsString; "a", "b", "c"];
+    let length = accepts_jsvalue_array(string_array.upcast());
+    assert_eq!(length, 3);
 }

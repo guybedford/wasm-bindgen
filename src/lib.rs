@@ -52,17 +52,18 @@ extern crate alloc;
 #[cfg(feature = "std")]
 extern crate std;
 
+use crate::convert::{TryFromJsValue, Upcast, VectorIntoWasmAbi};
 use alloc::boxed::Box;
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::convert::TryFrom;
+use core::fmt;
 use core::marker::PhantomData;
+use core::mem::ManuallyDrop;
 use core::ops::{
     Add, BitAnd, BitOr, BitXor, Deref, DerefMut, Div, Mul, Neg, Not, Rem, Shl, Shr, Sub,
 };
 use core::ptr::NonNull;
-
-use crate::convert::{TryFromJsValue, VectorIntoWasmAbi};
 
 const _: () = {
     /// Dummy empty function provided in order to detect linker-injected functions like `__wasm_call_ctors` and others that should be skipped by the wasm-bindgen interpreter.
@@ -111,6 +112,7 @@ macro_rules! externs {
 /// ```
 pub mod prelude {
     pub use crate::closure::{Closure, ImmediateClosure, ScopedClosure, StaticClosure};
+    pub use crate::convert::Upcast; // provides upcast() and upcast_ref()
     pub use crate::JsCast;
     pub use crate::JsValue;
     pub use crate::UnwrapThrowExt;
@@ -132,6 +134,10 @@ mod link;
 mod externref;
 #[cfg(wbg_reference_types)]
 use externref::__wbindgen_externref_heap_live_count;
+
+pub use crate::__rt::marker::{ErasableGeneric, Promising};
+pub use crate::convert::AsUpcast;
+pub use crate::convert::JsGeneric;
 
 mod cast;
 pub use crate::cast::JsCast;
@@ -159,6 +165,14 @@ pub struct JsValue {
 unsafe impl Send for JsValue {}
 #[cfg(not(target_feature = "atomics"))]
 unsafe impl Sync for JsValue {}
+
+unsafe impl ErasableGeneric for JsValue {
+    type Repr = JsValue;
+}
+
+impl Promising for JsValue {
+    type Resolution = JsValue;
+}
 
 impl JsValue {
     /// The `null` JS value constant.
@@ -371,6 +385,7 @@ impl JsValue {
     pub fn is_undefined(&self) -> bool {
         __wbindgen_is_undefined(self)
     }
+
     /// Tests whether this JS value is `null` or `undefined`
     #[inline]
     pub fn is_null_or_undefined(&self) -> bool {
@@ -942,6 +957,8 @@ impl AsRef<JsValue> for JsValue {
     }
 }
 
+impl Upcast<JsValue> for JsValue {}
+
 // Loosely based on toInt32 in ecma-272 for abi semantics
 // with restriction that it only applies for numbers
 fn to_uint_32(v: &JsValue) -> Option<u32> {
@@ -1166,6 +1183,240 @@ impl TryFromJsValue for usize {
         val.as_f64().map(|n| n as usize)
     }
 }
+
+// Undefined
+#[wasm_bindgen_macro::wasm_bindgen(wasm_bindgen = crate)]
+extern "C" {
+    #[wasm_bindgen(is_type_of = JsValue::is_undefined, typescript_type = "undefined", no_upcast)]
+    #[derive(Clone, PartialEq)]
+    pub type Undefined;
+}
+
+impl Undefined {
+    /// The undefined constant.
+    pub const UNDEFINED: Undefined = unsafe { core::mem::transmute(JsValue::UNDEFINED) };
+}
+
+impl Eq for Undefined {}
+
+impl Default for Undefined {
+    fn default() -> Self {
+        Self::UNDEFINED
+    }
+}
+
+impl fmt::Debug for Undefined {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str("undefined")
+    }
+}
+
+impl fmt::Display for Undefined {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str("undefined")
+    }
+}
+
+impl Upcast<Undefined> for Undefined {}
+impl Upcast<Undefined> for () {}
+impl Upcast<()> for Undefined {}
+impl Upcast<JsValue> for Undefined {}
+
+// Null
+#[wasm_bindgen_macro::wasm_bindgen(wasm_bindgen = crate)]
+extern "C" {
+    #[wasm_bindgen(is_type_of = JsValue::is_null, typescript_type = "null", no_upcast)]
+    #[derive(Clone, PartialEq)]
+    pub type Null;
+}
+
+impl Null {
+    /// The null constant.
+    pub const NULL: Null = unsafe { core::mem::transmute(JsValue::NULL) };
+}
+
+impl Eq for Null {}
+
+impl Default for Null {
+    fn default() -> Self {
+        Self::NULL
+    }
+}
+
+impl fmt::Debug for Null {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str("null")
+    }
+}
+
+impl fmt::Display for Null {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str("null")
+    }
+}
+
+impl Upcast<Null> for Null {}
+impl Upcast<JsValue> for Null {}
+
+#[wasm_bindgen_macro::wasm_bindgen(wasm_bindgen = crate)]
+extern "C" {
+    /// A nullable JS value of type `T`.
+    ///
+    /// Unlike `Option<T>`, which is a Rust-side construct, `Nullable<T>` represents
+    /// a JS value that may be `T`, `null`, or `undefined`, where the null status is
+    /// not yet known in Rust. The value remains in JS until inspected via methods
+    /// like [`is_empty`](Self::is_empty), [`as_option`](Self::as_option), or
+    /// [`into_option`](Self::into_option).
+    ///
+    /// `T` must implement [`JsGeneric`], meaning it is any type that can be
+    /// represented as a `JsValue` (e.g., `JsString`, `Number`, `Object`, etc.).
+    /// `Nullable<T>` itself implements `JsGeneric`, so it can be used in all
+    /// generic positions that accept JS types.
+    #[wasm_bindgen(typescript_type = "any", no_upcast)]
+    #[derive(Clone, PartialEq)]
+    pub type Nullable<T>;
+}
+
+impl<T: JsGeneric> Nullable<T> {
+    /// Creates an empty `Nullable<T>` representing `null`.
+    #[inline]
+    pub fn new() -> Self {
+        Null::NULL.unchecked_into()
+    }
+
+    /// Wraps a value in a `Nullable<T>`.
+    #[inline]
+    pub fn wrap(val: T) -> Self {
+        unsafe { core::mem::transmute_copy(&ManuallyDrop::new(val)) }
+    }
+
+    /// Creates a `Nullable<T>` from an `Option<T>`.
+    ///
+    /// Returns `Nullable::wrap(val)` if `Some(val)`, otherwise `Nullable::new()`.
+    #[inline]
+    pub fn from_option(opt: Option<T>) -> Self {
+        match opt {
+            Some(val) => Self::wrap(val),
+            None => Self::new(),
+        }
+    }
+
+    /// Tests whether this `Nullable<T>` is empty (`null` or `undefined`).
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        JsValue::is_null_or_undefined(self)
+    }
+
+    /// Converts this `Nullable<T>` to an `Option<T>` by cloning the inner value.
+    ///
+    /// Returns `None` if the value is `null` or `undefined`, otherwise returns
+    /// `Some(T)` with a clone of the contained value.
+    #[inline]
+    pub fn as_option(&self) -> Option<T> {
+        if JsValue::is_null_or_undefined(self) {
+            None
+        } else {
+            let cloned = self.deref().clone();
+            Some(unsafe { core::mem::transmute_copy(&ManuallyDrop::new(cloned)) })
+        }
+    }
+
+    /// Converts this `Nullable<T>` into an `Option<T>`, consuming `self`.
+    ///
+    /// Returns `None` if the value is `null` or `undefined`, otherwise returns
+    /// `Some(T)` with the contained value.
+    #[inline]
+    pub fn into_option(self) -> Option<T> {
+        if JsValue::is_null_or_undefined(&self) {
+            None
+        } else {
+            Some(unsafe { core::mem::transmute_copy(&ManuallyDrop::new(self)) })
+        }
+    }
+
+    /// Returns the contained value, consuming `self`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the value is `null` or `undefined`.
+    #[inline]
+    pub fn unwrap(self) -> T {
+        self.expect("called `Nullable::unwrap()` on an empty value")
+    }
+
+    /// Returns the contained value, consuming `self`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the value is `null` or `undefined`, with a panic message
+    /// including the passed message.
+    #[inline]
+    pub fn expect(self, msg: &str) -> T {
+        match self.into_option() {
+            Some(val) => val,
+            None => panic!("{}", msg),
+        }
+    }
+
+    /// Returns the contained value or a default.
+    ///
+    /// Returns the contained value if not `null` or `undefined`, otherwise
+    /// returns the default value of `T`.
+    #[inline]
+    pub fn unwrap_or_default(self) -> T
+    where
+        T: Default,
+    {
+        self.into_option().unwrap_or_default()
+    }
+
+    /// Returns the contained value or computes it from a closure.
+    ///
+    /// Returns the contained value if not `null` or `undefined`, otherwise
+    /// calls `f` and returns the result.
+    #[inline]
+    pub fn unwrap_or_else<F>(self, f: F) -> T
+    where
+        F: FnOnce() -> T,
+    {
+        self.into_option().unwrap_or_else(f)
+    }
+}
+
+impl<T: JsGeneric> Default for Nullable<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<T: JsGeneric + fmt::Debug> fmt::Debug for Nullable<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}?(", core::any::type_name::<T>())?;
+        match self.as_option() {
+            Some(v) => write!(f, "{v:?}")?,
+            None => f.write_str("null")?,
+        }
+        f.write_str(")")
+    }
+}
+impl<T: JsGeneric + fmt::Display> fmt::Display for Nullable<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}?(", core::any::type_name::<T>())?;
+        match self.as_option() {
+            Some(v) => write!(f, "{v}")?,
+            None => f.write_str("null")?,
+        }
+        f.write_str(")")
+    }
+}
+
+// Nullable upcast impls
+impl Upcast<Nullable<JsValue>> for JsValue {}
+impl<T> Upcast<Nullable<T>> for Undefined {}
+impl<T> Upcast<Nullable<T>> for Null {}
+impl<T> Upcast<Nullable<T>> for () {}
+impl<T> Upcast<JsValue> for Nullable<T> {}
+impl<T, U: Upcast<T>> Upcast<Nullable<T>> for Nullable<U> {}
 
 // Intrinsics that are simply JS function bindings and can be self-hosted via the macro.
 #[wasm_bindgen_macro::wasm_bindgen(wasm_bindgen = crate)]
