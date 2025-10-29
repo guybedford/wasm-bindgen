@@ -1,0 +1,13 @@
+{
+  "name": "wasm-bindgen-benchmarks",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "build:wasm": "cargo build --release --target wasm32-unknown-unknown",
+    "build:bindgen": "cargo run --manifest-path ../crates/cli/Cargo.toml --release -- ../target/wasm32-unknown-unknown/release/benchmarks_node.wasm --out-dir pkg --target bundler",
+    "build:opt": "wasm-opt pkg/benchmarks_node_bg.wasm -O3 -o pkg/benchmarks_node_bg.wasm || echo 'wasm-opt not found, skipping optimization'",
+    "build": "npm run build:wasm && npm run build:bindgen",
+    "bench": "node index.js"
+  },
+  "devDependencies": {}
+}
