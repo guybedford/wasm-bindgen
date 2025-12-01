@@ -33,11 +33,10 @@ use core::mem::MaybeUninit;
 use core::ops::{Add, BitAnd, BitOr, BitXor, Div, Mul, Neg, Not, Rem, Shl, Shr, Sub};
 use core::str;
 use core::str::FromStr;
-use wasm_bindgen::__rt::marker::AnyType;
 use wasm_bindgen::convert::{FromWasmAbi, IntoWasmAbi};
 
 pub use wasm_bindgen;
-use wasm_bindgen::{prelude::*, JsRef};
+use wasm_bindgen::prelude::*;
 
 // When adding new imports:
 //
@@ -337,7 +336,7 @@ extern "C" {
     ///
     /// This does not resize the array, the array will still be the same length.
     #[wasm_bindgen(method, structural, indexing_deleter)]
-    pub fn delete<T>(this: &Array, index: u32);
+    pub fn delete<T = JsValue>(this: &Array, index: u32);
 
     /// The `Array.from()` method creates a new, shallow-copied `Array` instance
     /// from an array-like or iterable object.
@@ -2028,10 +2027,10 @@ extern "C" {
     ///
     /// [MDN documentation](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Function/call)
     #[wasm_bindgen(method, catch, js_name = call)]
-    pub fn call1<T>(
+    pub fn call1<T = JsValue>(
         this: &Function,
         context: &JsValue,
-        arg1: &JsRef<T>,
+        arg1: &T,
     ) -> Result<JsValue, JsValue>;
 
     /// The `call()` method calls a function with a given this value and
@@ -6224,8 +6223,8 @@ pub mod Intl {
 /// Promising trait used to represent that a function may return V or Promise<V>
 pub trait Promising<T> {}
 
-impl<T: IntoWasmAbi> Promising<T> for T {}
-impl<T: IntoWasmAbi> Promising<T> for Promise<T> {}
+impl<T: IntoWasmAbi + FromWasmAbi> Promising<T> for T {}
+impl<T: IntoWasmAbi + FromWasmAbi> Promising<T> for Promise<T> {}
 
 // Promise
 #[wasm_bindgen]
@@ -6237,7 +6236,8 @@ extern "C" {
     #[must_use]
     #[wasm_bindgen(extends = Object, typescript_type = "Promise<any>")]
     #[derive(Clone, Debug)]
-    pub type Promise<T = AnyType>;
+    pub type Promise<T = JsValue>
+    where T: FromWasmAbi;
 
     /// Creates a new `Promise` with the provided executor `cb`
     ///
@@ -6275,7 +6275,9 @@ extern "C" {
     ///
     /// [MDN documentation](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)
     #[wasm_bindgen(constructor)]
-    pub fn new_t<T>(cb: &mut dyn FnMut(Function, Function)) -> Promise<T>;
+    pub fn new_t<T = JsValue>(cb: &mut dyn FnMut(Function, Function)) -> Promise<T>
+    where
+        T: FromWasmAbi;
 
     /// The `Promise.all(iterable)` method returns a single `Promise` that
     /// resolves when all of the promises in the iterable argument have resolved
@@ -6326,7 +6328,7 @@ extern "C" {
     ///
     /// [MDN documentation](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/resolve)
     #[wasm_bindgen(static_method_of = Promise)]
-    pub fn resolve<T>(obj: &JsRef<T>) -> Promise<T>;
+    pub fn resolve<T: FromWasmAbi>(obj: &T) -> Promise<T>;
 
     /// The `catch()` method returns a `Promise` and deals with rejected cases
     /// only.  It behaves the same as calling `Promise.prototype.then(undefined,
@@ -6339,7 +6341,7 @@ extern "C" {
 
     /// Same as `catch`, but returning a result to become the new Promise value.
     #[wasm_bindgen(method)]
-    pub fn catch_map<T, U, R: Promising<U>>(
+    pub fn catch_map<T, U: FromWasmAbi, R: Promising<U>>(
         this: &Promise<T>,
         cb: &Closure<dyn FnMut(T) -> Result<R, JsValue>>,
     ) -> Promise<U>;
@@ -6349,26 +6351,26 @@ extern "C" {
     ///
     /// [MDN documentation](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/then)
     #[wasm_bindgen(method)]
-    pub fn then<T>(this: &Promise<T>, cb: &Closure<dyn FnMut(JsRef<T>)>) -> Promise;
+    pub fn then<T>(this: &Promise<T>, cb: &Closure<dyn FnMut(T)>) -> Promise;
 
     /// Same as `then`, only with both arguments provided.
     #[wasm_bindgen(method, js_name = then)]
     pub fn then2<T>(
         this: &Promise<T>,
-        resolve: &Closure<dyn FnMut(JsRef<T>)>,
+        resolve: &Closure<dyn FnMut(T)>,
         reject: &Closure<dyn FnMut(JsValue)>,
     ) -> Promise;
 
     /// Same as `then`, but returning a result to become the new Promise value.
     #[wasm_bindgen(method, js_name = then)]
-    pub fn map<T: FromWasmAbi, U: IntoWasmAbi, R: Promising<U>>(
+    pub fn map<T: FromWasmAbi, U: FromWasmAbi, R: Promising<U>>(
         this: &Promise<T>,
         cb: &Closure<dyn FnMut(T) -> R>,
     ) -> Promise<U>;
 
     /// Same as `then`, but with two arguments and returning a result to become the new Promise value.
     #[wasm_bindgen(method, js_name = then)]
-    pub fn map2<T: FromWasmAbi, U: IntoWasmAbi, R: Promising<U>>(
+    pub fn map2<T: FromWasmAbi, U: FromWasmAbi, R: Promising<U>>(
         this: &Promise<T>,
         resolve: &Closure<dyn FnMut(T) -> R>,
         reject: &Closure<dyn FnMut(JsValue) -> R>,
@@ -6385,7 +6387,7 @@ extern "C" {
     ///
     /// [MDN documentation](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/finally)
     #[wasm_bindgen(method)]
-    pub fn finally(this: &Promise, cb: &Closure<dyn FnMut()>) -> Promise;
+    pub fn finally<T>(this: &Promise<T>, cb: &Closure<dyn FnMut()>) -> Promise;
 }
 
 /// Returns a handle to the global scope object.

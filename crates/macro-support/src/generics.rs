@@ -1,12 +1,60 @@
-use syn::visit::Visit;
+use std::collections::HashMap;
+use syn::visit_mut::{self, VisitMut};
+use syn::{visit::Visit, Ident, Type};
 
-use crate::error::Diagnostic;
+// Remaining generics features
+// - can consider re-allowing optional params on import types
+// - gathering generics across all param types and return types to auto-apply bounds, not just for self
+
+/// Visitor to replace wasm bindgen generics with their concrete types
+/// The concrete type is the default type on the import if specified when it was defined.
+struct GenericConcreteValueVisitor<'a> {
+    generics: &'a HashMap<&'a Ident, syn::Type>,
+}
+
+impl<'a> VisitMut for GenericConcreteValueVisitor<'a> {
+    fn visit_type_mut(&mut self, ty: &mut Type) {
+        if let Type::Path(type_path) = ty {
+            // Handle <T as Trait>::AssocType
+            if let Some(qself) = &mut type_path.qself {
+                if let Type::Path(qself_path) = &mut *qself.ty {
+                    if qself_path.qself.is_none() && qself_path.path.segments.len() == 1 {
+                        let ident = &qself_path.path.segments[0].ident;
+                        if let Some(concrete) = self.generics.get(ident) {
+                            *qself.ty = concrete.clone();
+                            return;
+                        }
+                    }
+                }
+            }
+            // Normal T::...
+            if type_path.qself.is_none() && !type_path.path.segments.is_empty() {
+                let first_seg = &type_path.path.segments[0];
+
+                if let Some(concrete) = self.generics.get(&first_seg.ident) {
+                    if type_path.path.segments.len() == 1 {
+                        *ty = concrete.clone();
+                    } else {
+                        if let Type::Path(concrete_path) = concrete {
+                            let remaining: Vec<_> =
+                                type_path.path.segments.iter().skip(1).cloned().collect();
+                            type_path.path.segments = concrete_path.path.segments.clone();
+                            type_path.path.segments.extend(remaining);
+                        }
+                    }
+                    return;
+                }
+            }
+        }
+        visit_mut::visit_type_mut(self, ty);
+    }
+}
 
 /// Helper visitor for generic parameter usage
 #[derive(Debug)]
 pub struct GenericNameVisitor<'a> {
-    name_set_a: &'a Vec<&'a syn::Ident>,
-    name_set_b: Option<&'a Vec<&'a syn::Ident>>,
+    name_set_a: &'a Vec<&'a Ident>,
+    name_set_b: Option<&'a Vec<&'a Ident>>,
     /// Was a generic parameter in name set A found?
     pub found_a: bool,
     /// Were all generic parameters in name set A reference usage?
@@ -21,10 +69,7 @@ pub struct GenericNameVisitor<'a> {
 impl<'a> GenericNameVisitor<'a> {
     /// Construct a new generic name visitors with a param search set,
     /// and optionally a second parameter search set.
-    pub fn new(
-        name_set_a: &'a Vec<&'a syn::Ident>,
-        name_set_b: Option<&'a Vec<&'a syn::Ident>>,
-    ) -> Self {
+    pub fn new(name_set_a: &'a Vec<&'a Ident>, name_set_b: Option<&'a Vec<&'a Ident>>) -> Self {
         Self {
             name_set_a,
             name_set_b,
@@ -139,76 +184,64 @@ impl<'a> Visit<'_> for GenericNameVisitor<'a> {
     }
 }
 
-/// Get the list of generic parameter identifier names
-pub(crate) fn generic_params(generics: &syn::Generics) -> Vec<&syn::Ident> {
+/// Obtain the generic parameters and their optional defaults
+pub(crate) fn generic_params<'a>(
+    generics: &'a syn::Generics,
+) -> Vec<(&'a Ident, Option<&'a syn::Type>)> {
+    generics
+        .type_params()
+        .map(|tp| (&tp.ident, tp.default.as_ref()))
+        .collect()
+}
+
+/// Obtain the generic parameters and their optional defaults
+pub(crate) fn generic_param_names<'a>(generics: &'a syn::Generics) -> Vec<&'a Ident> {
     generics.type_params().map(|tp| &tp.ident).collect()
 }
 
-pub(crate) fn uses_generic_params(ty: &syn::Type, generic_names: &Vec<&syn::Ident>) -> bool {
+pub(crate) fn uses_generic_params(ty: &syn::Type, generic_names: &Vec<&Ident>) -> bool {
     let mut visitor = GenericNameVisitor::new(generic_names, None);
-    syn::visit::visit_type(&mut visitor, ty);
+    visitor.visit_type(&ty);
     visitor.found_a
 }
 
-// TODO: (1) this should be recursive, (2) this should erase all of <A, B, C, ...> if any of A/B/C are generic.
-pub(crate) fn strip_local_generic_args(
-    ty: &syn::Type,
-    generic_names: &Vec<&syn::Ident>,
-) -> Result<syn::Type, Diagnostic> {
-    match ty {
-        syn::Type::Path(type_path) => {
-            let mut new_path = type_path.clone();
-
-            for segment in &mut new_path.path.segments {
-                if let syn::PathArguments::AngleBracketed(args) = &segment.arguments {
-                    let mut has_local = false;
-                    let mut has_concrete = false;
-
-                    for arg in &args.args {
-                        if let syn::GenericArgument::Type(ty) = arg {
-                            let mut visitor = GenericNameVisitor::new(generic_names, None);
-                            syn::visit::visit_type(&mut visitor, ty);
-
-                            if visitor.found_a {
-                                has_local = true;
-                            } else {
-                                has_concrete = true;
-                            }
-                        }
-                    }
-
-                    // Error if mixing concrete and local generics
-                    if has_local && has_concrete {
-                        bail_span!(
-                            segment,
-                            "Type mixes concrete type arguments with local generic parameters, which is not supported for imported function bindgen"
-                        );
-                    }
-
-                    // Strip if uses local generics
-                    if has_local {
-                        segment.arguments = syn::PathArguments::None;
-                    }
-                }
-            }
-
-            Ok(syn::Type::Path(new_path))
-        }
-        syn::Type::Reference(type_ref) => Ok(syn::Type::Reference(syn::TypeReference {
-            and_token: type_ref.and_token,
-            lifetime: type_ref.lifetime.clone(),
-            mutability: type_ref.mutability,
-            elem: Box::new(strip_local_generic_args(&type_ref.elem, generic_names)?),
-        })),
-        syn::Type::Ptr(type_ptr) => Ok(syn::Type::Ptr(syn::TypePtr {
-            star_token: type_ptr.star_token,
-            const_token: type_ptr.const_token,
-            mutability: type_ptr.mutability,
-            elem: Box::new(strip_local_generic_args(&type_ptr.elem, generic_names)?),
-        })),
-        // For other types, return as-is
-        _ => Ok(ty.clone()),
+/// Renaming visitor for generic bounds
+pub(crate) fn generic_bounds_rename<'a>(
+    mut predicate: syn::WherePredicate,
+    renames: &HashMap<&'a Ident, &'a Ident>,
+) -> syn::WherePredicate {
+    if renames.is_empty() {
+        return predicate;
     }
+    let concrete: HashMap<&Ident, syn::Type> = renames
+        .iter()
+        .map(|(from, to)| (*from, syn::parse_quote!(#to)))
+        .collect();
+    let mut visitor = GenericConcreteValueVisitor {
+        generics: &concrete,
+    };
+    visitor.visit_where_predicate_mut(&mut predicate);
+    predicate
+}
+
+/// Concrete type replacement visitor application
+pub(crate) fn generic_to_concrete<'a>(
+    mut ty: syn::Type,
+    generic_names: &HashMap<&'a Ident, Option<&'a syn::Type>>,
+) -> syn::Type {
+    if generic_names.is_empty() {
+        return ty;
+    }
+    let js_value: syn::Type = syn::parse_quote!(JsValue);
+    let concrete: HashMap<&Ident, syn::Type> = generic_names
+        .iter()
+        .map(|(ident, opt_ty)| (*ident, opt_ty.cloned().unwrap_or_else(|| js_value.clone())))
+        .collect();
+    let mut visitor = GenericConcreteValueVisitor {
+        generics: &concrete,
+    };
+    visitor.visit_type_mut(&mut ty);
+    ty
 }
 
 /// Normalizes generics by moving inline trait bounds to where clauses.
@@ -403,20 +436,110 @@ mod tests {
     }
 
     #[test]
-    fn test_strip_local_generic_args_mixed_errors() {
-        let generic_t: syn::Ident = syn::parse_quote!(T);
-        let generic_names = vec![&generic_t];
+    fn test_generic_args_to_concrete() {
+        use std::collections::HashMap;
 
-        let mixed_type: syn::Type = syn::parse_quote!(Promise<i32, T>);
-        assert!(crate::generics::strip_local_generic_args(&mixed_type, &generic_names).is_err());
+        // T -> String replacement
+        let t = syn::parse_quote!(T);
+        let str = Some(syn::parse_quote!(String));
+        let generic_names: HashMap<&syn::Ident, Option<&syn::Type>> = {
+            let mut map = HashMap::new();
+            map.insert(&t, str.as_ref());
+            map
+        };
 
-        let concrete_type: syn::Type = syn::parse_quote!(Promise<i32, String>);
-        assert!(crate::generics::strip_local_generic_args(&concrete_type, &generic_names).is_ok());
-
+        // T gets replaced with String
         let generic_type: syn::Type = syn::parse_quote!(Promise<T>);
-        let result =
-            crate::generics::strip_local_generic_args(&generic_type, &generic_names).unwrap();
-        let expected: syn::Type = syn::parse_quote!(Promise);
+        let result = crate::generics::generic_to_concrete(generic_type, &generic_names);
+        let expected: syn::Type = syn::parse_quote!(Promise<String>);
+        assert_eq!(
+            quote::quote!(#result).to_string(),
+            quote::quote!(#expected).to_string()
+        );
+
+        // Mixed: i32 stays, T becomes String
+        let mixed_type: syn::Type = syn::parse_quote!(Promise<i32, T>);
+        let result = crate::generics::generic_to_concrete(mixed_type, &generic_names);
+        let expected: syn::Type = syn::parse_quote!(Promise<i32, String>);
+        assert_eq!(
+            quote::quote!(#result).to_string(),
+            quote::quote!(#expected).to_string()
+        );
+
+        // No generics to replace - unchanged
+        let concrete_type: syn::Type = syn::parse_quote!(Promise<i32, bool>);
+        let result = crate::generics::generic_to_concrete(concrete_type, &generic_names);
+        let expected: syn::Type = syn::parse_quote!(Promise<i32, bool>);
+        assert_eq!(
+            quote::quote!(#result).to_string(),
+            quote::quote!(#expected).to_string()
+        );
+    }
+
+    #[test]
+    fn test_generic_associated_type_replacement() {
+        use std::collections::HashMap;
+
+        let t: syn::Ident = syn::parse_quote!(T);
+        let concrete: Option<syn::Type> = Some(syn::parse_quote!(MyConcreteType));
+        let generic_names: HashMap<&syn::Ident, Option<&syn::Type>> = {
+            let mut map = HashMap::new();
+            map.insert(&t, concrete.as_ref());
+            map
+        };
+
+        // T::DurableObjectStub -> MyConcreteType::DurableObjectStub
+        let assoc_type: syn::Type = syn::parse_quote!(T::DurableObjectStub);
+        let result = crate::generics::generic_to_concrete(assoc_type, &generic_names);
+        let expected: syn::Type = syn::parse_quote!(MyConcreteType::DurableObjectStub);
+        assert_eq!(
+            quote::quote!(#result).to_string(),
+            quote::quote!(#expected).to_string()
+        );
+
+        // Nested: Vec<T::Item> -> Vec<MyConcreteType::Item>
+        let nested: syn::Type = syn::parse_quote!(Vec<T::Item>);
+        let result = crate::generics::generic_to_concrete(nested, &generic_names);
+        let expected: syn::Type = syn::parse_quote!(Vec<MyConcreteType::Item>);
+        assert_eq!(
+            quote::quote!(#result).to_string(),
+            quote::quote!(#expected).to_string()
+        );
+
+        // Complex: WasmRet<<T::Stub as FromWasmAbi>::Abi>
+        let complex: syn::Type = syn::parse_quote!(WasmRet<<T::Stub as FromWasmAbi>::Abi>);
+        let result = crate::generics::generic_to_concrete(complex, &generic_names);
+        let expected: syn::Type =
+            syn::parse_quote!(WasmRet<<MyConcreteType::Stub as FromWasmAbi>::Abi>);
+        assert_eq!(
+            quote::quote!(#result).to_string(),
+            quote::quote!(#expected).to_string()
+        );
+
+        // T<Foo> gets fully replaced, args discarded
+        let with_args: syn::Type = syn::parse_quote!(T<SomeArg>);
+        let result = crate::generics::generic_to_concrete(with_args, &generic_names);
+        let expected: syn::Type = syn::parse_quote!(MyConcreteType);
+        assert_eq!(
+            quote::quote!(#result).to_string(),
+            quote::quote!(#expected).to_string()
+        );
+
+        // QSelf: <T::DurableObjectStub as FromWasmAbi>::Abi
+        let qself_type: syn::Type = syn::parse_quote!(<T::DurableObjectStub as FromWasmAbi>::Abi);
+        let result = crate::generics::generic_to_concrete(qself_type, &generic_names);
+        let expected: syn::Type =
+            syn::parse_quote!(<MyConcreteType::DurableObjectStub as FromWasmAbi>::Abi);
+        assert_eq!(
+            quote::quote!(#result).to_string(),
+            quote::quote!(#expected).to_string()
+        );
+
+        // QSelf with trait: <T as DurableObject>::DurableObjectStub
+        let qself_trait: syn::Type = syn::parse_quote!(<T as DurableObject>::DurableObjectStub);
+        let result = crate::generics::generic_to_concrete(qself_trait, &generic_names);
+        let expected: syn::Type =
+            syn::parse_quote!(<MyConcreteType as DurableObject>::DurableObjectStub);
         assert_eq!(
             quote::quote!(#result).to_string(),
             quote::quote!(#expected).to_string()

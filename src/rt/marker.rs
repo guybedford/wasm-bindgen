@@ -52,9 +52,9 @@ pub struct CheckSupportsStaticProperty<T: SupportsStaticProperty>(T);
 #[doc(hidden)]
 pub struct AnyType;
 
-/// Marker trait for types which implement generics, indicating that they can be
-/// transmuted on their generics for type casting on ABI boundaries.
-pub trait GenericType {}
+/// Marker trait for generics - types with this trait, can have their generic
+/// params replaced with JsValue and cast transmute on ABI boundaries.
+pub unsafe trait GenericType: Sized {}
 
 // Minimal trait implementations for AnyType to support Closure generics.
 impl WasmDescribe for AnyType {

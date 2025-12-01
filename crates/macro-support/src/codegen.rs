@@ -1,9 +1,9 @@
 use crate::ast;
+use crate::ast::ImportKind;
 use crate::encode;
 use crate::encode::EncodeChunk;
-use crate::generics;
-use crate::generics::strip_local_generic_args;
-use crate::generics::GenericNameVisitor;
+use crate::generics::{self, generic_bounds_rename};
+use crate::generics::{generic_to_concrete, GenericNameVisitor};
 use crate::Diagnostic;
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::format_ident;
@@ -29,22 +29,30 @@ fn get_extern_type() -> TokenStream {
 /// or providing a diagnostic if conversion fails.
 pub trait TryToTokens {
     /// Attempt to convert a `Self` into tokens and add it to the `TokenStream`
-    fn try_to_tokens(&self, tokens: &mut TokenStream) -> Result<(), Diagnostic>;
+    fn try_to_tokens(
+        &self,
+        tokens: &mut TokenStream,
+        program: &ast::Program,
+    ) -> Result<(), Diagnostic>;
 
     /// Attempt to convert a `Self` into a new `TokenStream`
-    fn try_to_token_stream(&self) -> Result<TokenStream, Diagnostic> {
+    fn try_to_token_stream(&self, program: &ast::Program) -> Result<TokenStream, Diagnostic> {
         let mut tokens = TokenStream::new();
-        self.try_to_tokens(&mut tokens)?;
+        self.try_to_tokens(&mut tokens, program)?;
         Ok(tokens)
     }
 }
 
 impl TryToTokens for ast::Program {
     // Generate wrappers for all the items that we've found
-    fn try_to_tokens(&self, tokens: &mut TokenStream) -> Result<(), Diagnostic> {
+    fn try_to_tokens(
+        &self,
+        tokens: &mut TokenStream,
+        program: &ast::Program,
+    ) -> Result<(), Diagnostic> {
         let mut errors = Vec::new();
         for export in self.exports.iter() {
-            if let Err(e) = export.try_to_tokens(tokens) {
+            if let Err(e) = export.try_to_tokens(tokens, program) {
                 errors.push(e);
             }
         }
@@ -62,7 +70,7 @@ impl TryToTokens for ast::Program {
                 kind: &i.kind,
                 wasm_bindgen: &self.wasm_bindgen,
             }
-            .try_to_tokens(tokens)?;
+            .try_to_tokens(tokens, program)?;
 
             // If there is a js namespace, check that name isn't a type. If it is,
             // this import might be a method on that type.
@@ -70,7 +78,7 @@ impl TryToTokens for ast::Program {
                 // When the namespace is `A.B`, the type name should be `B`.
                 if let Some(ns) = nss.last().and_then(|t| types.get(t)) {
                     if i.kind.fits_on_impl() {
-                        let kind = match i.kind.try_to_token_stream() {
+                        let kind = match i.kind.try_to_token_stream(program) {
                             Ok(kind) => kind,
                             Err(e) => {
                                 errors.push(e);
@@ -87,7 +95,7 @@ impl TryToTokens for ast::Program {
                 }
             }
 
-            if let Err(e) = i.kind.try_to_tokens(tokens) {
+            if let Err(e) = i.kind.try_to_tokens(tokens, program) {
                 errors.push(e);
             }
         }
@@ -200,9 +208,13 @@ impl TryToTokens for ast::Program {
 }
 
 impl TryToTokens for ast::LinkToModule {
-    fn try_to_tokens(&self, tokens: &mut TokenStream) -> Result<(), Diagnostic> {
-        let mut program = TokenStream::new();
-        self.0.try_to_tokens(&mut program)?;
+    fn try_to_tokens(
+        &self,
+        tokens: &mut TokenStream,
+        program: &ast::Program,
+    ) -> Result<(), Diagnostic> {
+        let mut program_tokens = TokenStream::new();
+        self.0.try_to_tokens(&mut program_tokens, program)?;
         let link_function_name = self.0.link_function_name(0);
         let name = Ident::new(&link_function_name, Span::call_site());
         let wasm_bindgen = &self.0.wasm_bindgen;
@@ -210,7 +222,7 @@ impl TryToTokens for ast::LinkToModule {
         let extern_fn = extern_fn(&name, &[], &[], &[], abi_ret);
         (quote! {
             {
-                #program
+                #program_tokens
                 #extern_fn
 
                 static __VAL: #wasm_bindgen::__rt::LazyLock<#wasm_bindgen::__rt::alloc::string::String> =
@@ -573,7 +585,11 @@ impl ToTokens for ast::StructField {
 }
 
 impl TryToTokens for ast::Export {
-    fn try_to_tokens(self: &ast::Export, into: &mut TokenStream) -> Result<(), Diagnostic> {
+    fn try_to_tokens(
+        self: &ast::Export,
+        into: &mut TokenStream,
+        _: &ast::Program,
+    ) -> Result<(), Diagnostic> {
         let generated_name = self.rust_symbol();
         let export_name = self.export_name();
         let mut args = vec![];
@@ -922,9 +938,13 @@ impl TryToTokens for ast::Export {
 }
 
 impl TryToTokens for ast::ImportKind {
-    fn try_to_tokens(&self, tokens: &mut TokenStream) -> Result<(), Diagnostic> {
+    fn try_to_tokens(
+        &self,
+        tokens: &mut TokenStream,
+        program: &ast::Program,
+    ) -> Result<(), Diagnostic> {
         match *self {
-            ast::ImportKind::Function(ref f) => f.try_to_tokens(tokens)?,
+            ast::ImportKind::Function(ref f) => f.try_to_tokens(tokens, program)?,
             ast::ImportKind::Static(ref s) => s.to_tokens(tokens),
             ast::ImportKind::String(ref s) => s.to_tokens(tokens),
             ast::ImportKind::Type(ref t) => t.to_tokens(tokens),
@@ -993,6 +1013,13 @@ impl ToTokens for ast::ImportType {
 
         let (impl_generics, ty_generics, where_clause) = self.generics.split_for_impl();
 
+        let impl_generics_inner: proc_macro2::TokenStream = impl_generics
+            .to_token_stream()
+            .to_string()
+            .trim_matches(|c| c == '<' || c == '>')
+            .parse()
+            .unwrap();
+
         // For struct definitions, we need generics with defaults, so use params directly
         let struct_generics = if self.generics.params.is_empty() {
             quote! {}
@@ -1005,7 +1032,7 @@ impl ToTokens for ast::ImportType {
         let phantom_init;
         let generic_or_concrete_impls;
 
-        let generic_param_names = generics::generic_params(&self.generics);
+        let generic_param_names = generics::generic_param_names(&self.generics);
         if !generic_param_names.is_empty() {
             phantom = quote! { _phantom: ::core::marker::PhantomData<(#(#generic_param_names),*)> };
             phantom_init = quote! { _phantom: ::core::marker::PhantomData };
@@ -1018,8 +1045,6 @@ impl ToTokens for ast::ImportType {
                         unsafe { core::mem::transmute(self) }
                     }
                 }
-
-                impl #impl_generics #wasm_bindgen::__rt::marker::GenericType for #rust_name #ty_generics #where_clause {}
             };
         } else {
             phantom = quote! {};
@@ -1050,7 +1075,7 @@ impl ToTokens for ast::ImportType {
                 use #wasm_bindgen::convert::{RefFromWasmAbi, LongRefFromWasmAbi};
                 use #wasm_bindgen::describe::WasmDescribe;
                 use #wasm_bindgen::{JsValue, JsCast};
-                use #wasm_bindgen::__rt::core;
+                use #wasm_bindgen::__rt::{core, marker::GenericType};
 
                 #[automatically_derived]
                 impl #impl_generics WasmDescribe for #rust_name #ty_generics #where_clause {
@@ -1078,7 +1103,7 @@ impl ToTokens for ast::ImportType {
                 }
 
                 #[automatically_derived]
-                impl <'a, #(#generic_param_names),*> OptionIntoWasmAbi for &'a #rust_name #ty_generics #where_clause {
+                impl <'a, #impl_generics_inner> OptionIntoWasmAbi for &'a #rust_name #ty_generics #where_clause {
                     #[inline]
                     fn none() -> Self::Abi {
                         0
@@ -1105,7 +1130,7 @@ impl ToTokens for ast::ImportType {
                 }
 
                 #[automatically_derived]
-                impl <'a, #(#generic_param_names),*> IntoWasmAbi for &'a #rust_name #ty_generics #where_clause {
+                impl <'a, #impl_generics_inner> IntoWasmAbi for &'a #rust_name #ty_generics #where_clause {
                     type Abi = <&'a JsValue as IntoWasmAbi>::Abi;
 
                     #[inline]
@@ -1208,7 +1233,7 @@ impl ToTokens for ast::ImportType {
                     }
                 }
 
-                // impl #impl_generics JsObject for #rust_name #ty_generics #where_clause {}
+                unsafe impl #impl_generics GenericType for #rust_name #ty_generics #where_clause {}
             };
         })
         .to_tokens(tokens);
@@ -1375,29 +1400,129 @@ impl ToTokens for ast::StringEnum {
     }
 }
 
-impl TryToTokens for ast::ImportFunction {
-    fn try_to_tokens(&self, tokens: &mut TokenStream) -> Result<(), Diagnostic> {
-        let mut class_ty = None;
-        let mut is_method = false;
-        let mut class_generic_param_cnt = 0;
-        match self.kind {
+struct FnClassInfo<'a> {
+    class_name: &'a str,
+    class: &'a syn::Type,
+    is_method: bool,
+    self_generic_params: Vec<&'a syn::Ident>,
+}
+
+impl ast::ImportFunctionKind {
+    /// Get the class type information for an import.
+    fn get_class_info(&self) -> Option<FnClassInfo<'_>> {
+        match &self {
             ast::ImportFunctionKind::Method {
-                ref ty,
-                ref kind,
-                generic_param_count: generic_param_cnt,
-                ..
+                class, ty, kind, ..
             } => {
-                if let ast::MethodKind::Operation(ast::Operation {
-                    is_static: false, ..
-                }) = kind
-                {
-                    is_method = true;
+                let is_method = matches!(
+                    kind,
+                    ast::MethodKind::Operation(ast::Operation {
+                        is_static: false,
+                        ..
+                    })
+                );
+
+                // get the list of generic parameter names that apply only to the base type struct
+                // from the first &Self<...> argument (already validated to be explicit during parsing)
+                let mut generic_params = Vec::new();
+                if let syn::Type::Path(syn::TypePath { path, .. }) = get_ty(ty) {
+                    if let Some(syn::PathSegment {
+                        arguments: syn::PathArguments::AngleBracketed(gen_args),
+                        ..
+                    }) = path.segments.last()
+                    {
+                        for gen_arg in &gen_args.args {
+                            if let syn::GenericArgument::Type(syn::Type::Path(syn::TypePath {
+                                path,
+                                ..
+                            })) = gen_arg
+                            {
+                                assert_eq!(path.segments.len(), 1);
+                                let segment = &path.segments[0];
+                                // validated at parse time
+                                assert!(segment.arguments.is_empty());
+                                generic_params.push(&segment.ident);
+                            } else {
+                                panic!("parse validation failure, self generics on methods must be idents");
+                            }
+                        }
+                    }
                 }
-                class_ty = Some(ty);
-                class_generic_param_cnt = generic_param_cnt;
+
+                Some(FnClassInfo {
+                    class_name: class,
+                    class: ty,
+                    is_method,
+                    self_generic_params: generic_params,
+                })
             }
-            ast::ImportFunctionKind::Normal => {}
+            ast::ImportFunctionKind::Normal => None,
         }
+    }
+}
+
+pub struct ImportTypeGenerics<'a> {
+    pub params: Vec<(&'a Ident, &'a syn::Type)>,
+    pub where_clause: Option<&'a syn::WhereClause>,
+}
+
+impl ast::Program {
+    pub(crate) fn import_type_generics<'a>(
+        &'a self,
+        type_name: &str,
+    ) -> Result<ImportTypeGenerics<'a>, Diagnostic> {
+        self.imports
+            .iter()
+            .find_map(|import| match &import.kind {
+                ImportKind::Type(import_type) if import_type.rust_name == type_name => Some({
+                    let params = import_type
+                        .generics
+                        .type_params()
+                        .map(|tp| {
+                            tp.default
+                                .as_ref()
+                                .ok_or_else(|| {
+                                    Diagnostic::span_error(
+                                        tp.ident.span(),
+                                        format!(
+                                            "generic parameter `{}` requires a default type",
+                                            tp.ident
+                                        ),
+                                    )
+                                })
+                                .map(|default| (&tp.ident, default))
+                        })
+                        .collect::<Result<Vec<_>, _>>();
+
+                    params.map(|params| ImportTypeGenerics {
+                        params,
+                        where_clause: import_type.generics.where_clause.as_ref(),
+                    })
+                }),
+                _ => None,
+            })
+            .unwrap_or(Ok(ImportTypeGenerics {
+                params: Vec::new(),
+                where_clause: None,
+            }))
+    }
+}
+
+impl TryToTokens for ast::ImportFunction {
+    fn try_to_tokens(
+        &self,
+        tokens: &mut TokenStream,
+        program: &ast::Program,
+    ) -> Result<(), Diagnostic> {
+        let class_ty = self.kind.get_class_info();
+        let is_method = matches!(
+            class_ty,
+            Some(FnClassInfo {
+                is_method: true,
+                ..
+            })
+        );
+
         let vis = &self.function.rust_vis;
         let ret = match self.function.ret.as_ref().map(|ret| &ret.r#type) {
             Some(ty) => quote! { -> #ty },
@@ -1408,7 +1533,10 @@ impl TryToTokens for ast::ImportFunction {
         let mut abi_arguments = Vec::new();
         let mut arg_conversions = Vec::new();
         let mut arguments = Vec::new();
-        let generic_params = generics::generic_params(&self.generics);
+
+        let fn_class_generics = self.get_fn_class_generics(program)?;
+        let fn_generic_param_names = generics::generic_param_names(&self.generics);
+
         let mut generics = self.generics.clone();
         generics::normalize_generics(&mut generics);
 
@@ -1442,7 +1570,8 @@ impl TryToTokens for ast::ImportFunction {
 
             let abi_ty;
             let convert_arg;
-            if generics::uses_generic_params(ty, &generic_params) {
+
+            if generics::uses_generic_params(ty, &fn_generic_param_names) {
                 // reference generics require a lifetime in extern "C" blocks, so synthesize one
                 if let syn::Type::Reference(ty_ref) = &**ty {
                     // Ensure our generic is actually a Wasm-bindgen supported generic.
@@ -1472,7 +1601,7 @@ impl TryToTokens for ast::ImportFunction {
                     }
                 };
                 // Strip generics using the default concrete type for all generic items.
-                let concrete_ty = strip_local_generic_args(ty, &generic_params)?;
+                let concrete_ty = generic_to_concrete(*(ty).clone(), &fn_class_generics.defaults);
                 abi_ty = quote! { #concrete_ty };
                 // Conversion via transmute per generic trait semantics (as checked first above).
                 convert_arg = quote! { core::mem::transmute(#var) };
@@ -1547,14 +1676,19 @@ impl TryToTokens for ast::ImportFunction {
                         "cannot return references in #[wasm_bindgen] imports yet"
                     );
                 }
-                Some(ref ty) => {
-                    if generics::uses_generic_params(ty, &generic_params) {
-                        let ty = strip_local_generic_args(ty, &generic_params)?;
-                        abi_ret = quote! { #wasm_bindgen::convert::WasmRet<<#ty as #wasm_bindgen::convert::FromWasmAbi>::Abi> };
-                        convert_ret = quote! { core::mem::transmute(<#ty as #wasm_bindgen::convert::FromWasmAbi>::from_abi(#ret_ident.join())) };
+                Some(ty) => {
+                    if generics::uses_generic_params(&ty, &fn_generic_param_names) {
+                        generics
+                            .make_where_clause()
+                            .predicates
+                            .push(parse_quote! { #ty: #wasm_bindgen::__rt::marker::GenericType });
+                        let concrete_ty = generic_to_concrete(ty.clone(), &fn_class_generics.defaults);
+                        convert_ret = quote! { unsafe { core::ptr::read(&core::mem::ManuallyDrop::new(<#concrete_ty as #wasm_bindgen::convert::FromWasmAbi>::from_abi(#ret_ident.join())) as *const _ as *const #ty) } };
+                        abi_ret = quote! { #wasm_bindgen::convert::WasmRet<<#concrete_ty as #wasm_bindgen::convert::FromWasmAbi>::Abi> };
                     } else {
-                        abi_ret = quote! { #wasm_bindgen::convert::WasmRet<<#ty as #wasm_bindgen::convert::FromWasmAbi>::Abi> };
                         convert_ret = quote! { <#ty as #wasm_bindgen::convert::FromWasmAbi>::from_abi(#ret_ident.join()) };
+                        abi_ret = quote! { #wasm_bindgen::convert::WasmRet<<#ty as #wasm_bindgen::convert::FromWasmAbi>::Abi> };
+
                     }
                 }
                 None => {
@@ -1562,6 +1696,12 @@ impl TryToTokens for ast::ImportFunction {
                     convert_ret = quote! { () };
                 }
             }
+        }
+
+        // add class param generics to function bounds, with class params replaced with function params of same name
+        let where_clause = generics.make_where_clause();
+        for predicate in fn_class_generics.bounds {
+            where_clause.predicates.push(predicate);
         }
 
         let mut exceptional_ret = quote!();
@@ -1633,10 +1773,21 @@ impl TryToTokens for ast::ImportFunction {
             None
         };
 
+        // Generic hoisting - splits extern "C" function generics into impl generics (class generics)
+        // and function generics. This is done by matching simple generic type ident params on the &self
+        // argument (which is validated during parsing), and then extracting those generics and their bounds
+        // off the function and up to the class definition itself.
         let mut class_impl_def = None;
-
-        if let Some(class) = class_ty {
-            if !is_method || class_generic_param_cnt == 0 {
+        let class_generics;
+        if let Some(FnClassInfo {
+            class_name,
+            class,
+            is_method,
+            self_generic_params,
+        }) = class_ty
+        {
+            class_generics = program.import_type_generics(class_name)?.params;
+            if !is_method || class_generics.len() == 0 {
                 let mut class = class.clone();
                 // Generic type stripping for static !is_method case
                 if let syn::Type::Path(syn::TypePath {
@@ -1657,7 +1808,7 @@ impl TryToTokens for ast::ImportFunction {
                 // So now we hoist those ones into the class impl generics from the function, removing
                 // them from the direct function generics.
 
-                // get the list of all function generic parameters (collect into owned Idents)
+                // get the list of all function generic parameters
                 let all_generic_params: Vec<_> = generics
                     .params
                     .iter()
@@ -1666,31 +1817,6 @@ impl TryToTokens for ast::ImportFunction {
                         _ => None,
                     })
                     .collect();
-
-                // get the list of generic parameter names that apply only to the base type struct
-                // from the first &Self<...> argument (already validated to be explicit during parsing)
-                let mut class_generic_params = Vec::new();
-                if let syn::Type::Path(syn::TypePath { path, .. }) = get_ty(class) {
-                    if let Some(syn::PathSegment {
-                        arguments: syn::PathArguments::AngleBracketed(gen_args),
-                        ..
-                    }) = path.segments.last()
-                    {
-                        for gen_arg in &gen_args.args {
-                            if let syn::GenericArgument::Type(syn::Type::Path(syn::TypePath {
-                                path,
-                                ..
-                            })) = gen_arg
-                            {
-                                let segment = &path.segments[0];
-                                if segment.arguments.is_empty() {
-                                    class_generic_params.push(segment.ident.clone());
-                                    continue;
-                                }
-                            }
-                        }
-                    }
-                }
 
                 // type strip the class name
                 let mut class = class.clone();
@@ -1707,7 +1833,7 @@ impl TryToTokens for ast::ImportFunction {
                 // Get non-class generics by filtering out class generics
                 let non_class_generic_params: Vec<_> = all_generic_params
                     .iter()
-                    .filter(|ident| !class_generic_params.contains(ident))
+                    .filter(|ident| !self_generic_params.contains(ident))
                     .cloned()
                     .collect();
 
@@ -1719,7 +1845,6 @@ impl TryToTokens for ast::ImportFunction {
                     syn::punctuated::Punctuated::<syn::WherePredicate, syn::Token![,]>::new();
 
                 // Convert to references for visitor
-                let class_generic_refs: Vec<_> = class_generic_params.iter().collect();
                 let non_class_generic_refs: Vec<_> = non_class_generic_params.iter().collect();
 
                 for predicate in
@@ -1728,7 +1853,7 @@ impl TryToTokens for ast::ImportFunction {
                     if let syn::WherePredicate::Type(type_predicate) = &predicate {
                         // Check LHS for class generics and non-class generics
                         let mut lhs_visitor = GenericNameVisitor::new(
-                            &class_generic_refs,
+                            &self_generic_params,
                             Some(&non_class_generic_refs),
                         );
                         lhs_visitor.visit_type(&type_predicate.bounded_ty);
@@ -1763,7 +1888,7 @@ impl TryToTokens for ast::ImportFunction {
                         .into_iter()
                         .filter(|param| match param {
                             syn::GenericParam::Type(type_param) => {
-                                !class_generic_params.contains(&type_param.ident)
+                                !self_generic_params.contains(&&type_param.ident)
                             }
                             _ => true,
                         })
@@ -1771,7 +1896,7 @@ impl TryToTokens for ast::ImportFunction {
                 generics.params = kept_params;
 
                 class_impl_def = Some(
-                    quote! { impl <#(#class_generic_params),*> #class <#(#class_generic_params),*> #impl_where_clause },
+                    quote! { impl <#(#self_generic_params),*> #class <#(#self_generic_params),*> #impl_where_clause },
                 );
             }
         };
@@ -1821,8 +1946,65 @@ struct DescribeImport<'a> {
     wasm_bindgen: &'a syn::Path,
 }
 
+// Extract information about class generics that applies to function-level method generics
+struct FnClassGenerics<'a> {
+    defaults: HashMap<&'a syn::Ident, Option<&'a syn::Type>>,
+    bounds: Vec<syn::WherePredicate>,
+}
+
+impl ast::ImportFunction {
+    fn get_fn_class_generics<'a>(
+        &'a self,
+        program: &'a ast::Program,
+    ) -> Result<FnClassGenerics<'a>, Diagnostic> {
+        let class_ty = self.kind.get_class_info();
+        let fn_generic_params = generics::generic_params(&self.generics);
+        let mut generic_defaults: HashMap<_, _> = fn_generic_params.into_iter().collect();
+        let mut bounds = Vec::new();
+
+        if let Some(FnClassInfo {
+            class_name,
+            class: _,
+            is_method: true,
+            self_generic_params,
+        }) = class_ty
+        {
+            let class_generics = program.import_type_generics(class_name)?;
+            for (i, self_generic_param) in self_generic_params.iter().enumerate() {
+                let entry = generic_defaults.entry(self_generic_param).or_insert(None);
+                if entry.is_none() {
+                    *entry = Some(class_generics.params[i].1);
+                }
+            }
+
+            if let Some(where_clause) = class_generics.where_clause {
+                let renames: HashMap<&Ident, &Ident> = class_generics
+                    .params
+                    .iter()
+                    .zip(self_generic_params.iter())
+                    .map(|((class_ident, _), fn_ident)| (*class_ident, *fn_ident))
+                    .collect();
+
+                for predicate in &where_clause.predicates {
+                    let renamed = generic_bounds_rename(predicate.clone(), &renames);
+                    bounds.push(renamed);
+                }
+            }
+        }
+
+        Ok(FnClassGenerics {
+            defaults: generic_defaults,
+            bounds,
+        })
+    }
+}
+
 impl TryToTokens for DescribeImport<'_> {
-    fn try_to_tokens(&self, tokens: &mut TokenStream) -> Result<(), Diagnostic> {
+    fn try_to_tokens(
+        &self,
+        tokens: &mut TokenStream,
+        program: &ast::Program,
+    ) -> Result<(), Diagnostic> {
         let f = match *self.kind {
             ast::ImportKind::Function(ref f) => f,
             ast::ImportKind::Static(_) => return Ok(()),
@@ -1830,34 +2012,19 @@ impl TryToTokens for DescribeImport<'_> {
             ast::ImportKind::Type(_) => return Ok(()),
             ast::ImportKind::Enum(_) => return Ok(()),
         };
-        let generic_params = generics::generic_params(&f.generics);
-        let mut argtys = Vec::new();
-        for arg in &f.function.arguments {
-            let ty = &arg.pat_type.ty;
-            if generics::uses_generic_params(ty, &generic_params) {
-                let concrete_ty = generics::strip_local_generic_args(ty, &generic_params)?;
-                argtys.push(quote! { #concrete_ty });
-            } else {
-                argtys.push(quote! { #ty });
-            }
-        }
+        let fn_class_generics = f.get_fn_class_generics(program)?;
+        let argtys = f.function.arguments.iter().map(|arg| {
+            generics::generic_to_concrete(*(arg.pat_type.ty).clone(), &fn_class_generics.defaults)
+        });
         let nargs = f.function.arguments.len() as u32;
-        let inform_ret = if f.function.r#async {
-            // async functions always return a Promise (JsValue), regardless of their declared return type
-            quote! { <JsValue as WasmDescribe>::describe(); }
-        } else {
-            match &f.js_ret {
-                Some(ref t) => {
-                    let t = if generics::uses_generic_params(t, &generic_params) {
-                        let concrete_ty = generics::strip_local_generic_args(t, &generic_params)?;
-                        quote! { #concrete_ty }
-                    } else {
-                        quote! { #t }
-                    };
-                    quote! { <#t as WasmDescribe>::describe(); }
-                }
-                None => quote! { <() as WasmDescribe>::describe(); },
+        let inform_ret = match &f.js_ret {
+            Some(ref t) => {
+                let t = generics::generic_to_concrete(t.clone(), &fn_class_generics.defaults);
+                quote! { <#t as WasmDescribe>::describe(); }
             }
+            // async functions always return a JsValue, even if they say to return ()
+            None if f.function.r#async => quote! { <JsValue as WasmDescribe>::describe(); },
+            None => quote! { <() as WasmDescribe>::describe(); },
         };
 
         Descriptor {
@@ -2208,7 +2375,7 @@ fn extern_fn(
         }
 
         #[cfg(not(all(target_arch = "wasm32", any(target_os = "unknown", target_os = "none"))))]
-        unsafe fn #import_name(#(#abi_arguments),*) -> #abi_ret {
+        unsafe fn #import_name(#(#abi_arguments),*) -> ! {
             #(
                 drop(#abi_argument_names);
             )*

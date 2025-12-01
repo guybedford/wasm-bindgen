@@ -48,7 +48,7 @@ pub fn expand(attr: TokenStream, input: TokenStream) -> Result<TokenStream, Diag
     let mut tokens = proc_macro2::TokenStream::new();
     let mut program = ast::Program::default();
     item.macro_parse(&mut program, (Some(opts), &mut tokens))?;
-    program.try_to_tokens(&mut tokens)?;
+    program.try_to_tokens(&mut tokens, &program)?;
 
     // If we successfully got here then we should have used up all attributes
     // and considered all of them to see if they were used. If one was forgotten
@@ -60,12 +60,13 @@ pub fn expand(attr: TokenStream, input: TokenStream) -> Result<TokenStream, Diag
 
 /// Takes the parsed input from a `wasm_bindgen::link_to` macro and returns the generated link
 pub fn expand_link_to(input: TokenStream) -> Result<TokenStream, Diagnostic> {
+    let program = ast::Program::default();
     parser::reset_attrs_used();
     let opts = syn::parse2(input)?;
 
     let mut tokens = proc_macro2::TokenStream::new();
     let link = parser::link_to(opts)?;
-    link.try_to_tokens(&mut tokens)?;
+    link.try_to_tokens(&mut tokens, &program)?;
 
     Ok(tokens)
 }
@@ -103,7 +104,7 @@ pub fn expand_class_marker(
     item.sig.to_tokens(&mut tokens);
     let mut err = None;
     item.block.brace_token.surround(&mut tokens, |tokens| {
-        if let Err(e) = program.try_to_tokens(tokens) {
+        if let Err(e) = program.try_to_tokens(tokens, &program) {
             err = Some(e);
         }
         parser::check_unused_attrs(tokens); // same as above
@@ -196,7 +197,7 @@ pub fn expand_struct_marker(item: TokenStream) -> Result<TokenStream, Diagnostic
     program.structs.push((&mut s).convert(&program)?);
 
     let mut tokens = proc_macro2::TokenStream::new();
-    program.try_to_tokens(&mut tokens)?;
+    program.try_to_tokens(&mut tokens, &program)?;
 
     parser::check_unused_attrs(&mut tokens);
 

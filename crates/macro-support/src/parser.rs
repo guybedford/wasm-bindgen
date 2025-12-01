@@ -617,35 +617,13 @@ impl<'a> ConvertToAst<(&ast::Program, BindgenAttrs, &'a Option<ast::ImportModule
                     "first argument of method must be a shared reference"
                 ),
             };
-            let class_name = match get_ty(class) {
-                syn::Type::Path(syn::TypePath {
-                    qself: None,
-                    ref path,
-                }) => path,
-                _ => bail_span!(class, "first argument of method must be a path"),
-            };
-            let class_name_str = opts
-                .js_class()
-                .map(|p| Ok(p.0.into()))
-                .unwrap_or_else(|| extract_path_ident(class_name, true).map(|i| i.to_string()))?;
-
+            let class_ty = get_ty(class);
+            let js_class = opts.js_class().map(|p| p.0.to_string());
             let kind = ast::MethodKind::Operation(ast::Operation {
                 is_static: false,
                 kind: operation_kind,
             });
-
-            let (generic_param_count, default_generic_param_count) =
-                program.import_type_generic_count(&class_name_str);
-            if generic_param_count - default_generic_param_count > 0 {
-                validate_self_generics(class_name, &self.sig.generics)?;
-            }
-
-            ast::ImportFunctionKind::Method {
-                class: class_name_str,
-                ty: class.clone(),
-                kind,
-                generic_param_count,
-            }
+            extract_method(&class_ty, js_class, kind, &self.sig.generics, program)?
         } else if let Some(cls) = opts.static_method_of() {
             let class = opts
                 .js_class()
@@ -669,14 +647,7 @@ impl<'a> ConvertToAst<(&ast::Program, BindgenAttrs, &'a Option<ast::ImportModule
                 kind: operation_kind,
             });
 
-            let (generic_param_count, _) = program.import_type_generic_count(&class);
-
-            ast::ImportFunctionKind::Method {
-                class,
-                ty,
-                kind,
-                generic_param_count,
-            }
+            ast::ImportFunctionKind::Method { class, ty, kind }
         } else if opts.constructor().is_some() {
             let class = match js_ret {
                 Some(ref ty) => ty,
@@ -695,13 +666,10 @@ impl<'a> ConvertToAst<(&ast::Program, BindgenAttrs, &'a Option<ast::ImportModule
                 .map(|p| p.0.into())
                 .unwrap_or_else(|| class_name.to_string());
 
-            let (generic_param_count, _) = program.import_type_generic_count(&class_name);
-
             ast::ImportFunctionKind::Method {
                 class: class_name,
                 ty: class.clone(),
                 kind: ast::MethodKind::Constructor,
-                generic_param_count,
             }
         } else {
             ast::ImportFunctionKind::Normal
@@ -2292,29 +2260,52 @@ fn validate_generics(generics: &syn::Generics) -> Result<(), Diagnostic> {
 /// bounds on the class generics are fully disjoint. That is, that for any trait bound containing
 /// any of the type generics A, B or C, it will not contain any Z and D so that we can hoist these
 /// bounds to the impl clause during code generation.
-fn validate_self_generics(
-    class_name: &syn::Path,
+fn extract_method(
+    class_ty: &syn::Type,
+    js_class: Option<String>,
+    kind: ast::MethodKind,
     fn_generics: &syn::Generics,
-) -> Result<(), Diagnostic> {
+    program: &ast::Program,
+) -> Result<ast::ImportFunctionKind, Diagnostic> {
+    let class_name = match class_ty {
+        syn::Type::Path(syn::TypePath {
+            qself: None,
+            ref path,
+        }) => path,
+        _ => bail_span!(class_ty, "first argument of method must be a path"),
+    };
+
+    let class_name_str = js_class
+        .map(Ok)
+        .unwrap_or_else(|| extract_path_ident(class_name, true).map(|i| i.to_string()))?;
+
+    let class_generics = program.import_type_generics(&class_name_str)?.params;
+    let class_generic_cnt = class_generics.len();
+
     let mut class_generic_idents = Vec::new();
     if let Some(syn::PathSegment {
         arguments: syn::PathArguments::AngleBracketed(gen_args),
         ..
     }) = class_name.segments.last()
     {
+        if gen_args.args.len() != class_generic_cnt {
+            bail_validate_self_generics(class_name)?;
+        }
         for gen_arg in &gen_args.args {
             if let syn::GenericArgument::Type(syn::Type::Path(type_path)) = &gen_arg {
-                if type_path.qself.is_none() && type_path.path.segments.len() == 1 {
-                    let segment = &type_path.path.segments[0];
-                    if segment.arguments.is_empty() {
-                        class_generic_idents.push(&segment.ident);
-                        continue;
-                    }
+                if type_path.qself.is_some() || type_path.path.segments.len() != 1 {
+                    bail_validate_self_generics(gen_arg)?;
                 }
+                let segment = &type_path.path.segments[0];
+                if !segment.arguments.is_empty() {
+                    bail_validate_self_generics(gen_arg)?;
+                }
+                class_generic_idents.push(&segment.ident);
+            } else {
+                bail_validate_self_generics(gen_arg)?;
             }
-            bail_validate_self_generics(gen_arg)?;
         }
-    } else {
+    } else if class_generic_cnt > 0 {
         bail_validate_self_generics(class_name)?;
     }
 
@@ -2357,7 +2348,11 @@ fn validate_self_generics(
         }
     }
 
-    Ok(())
+    Ok(ast::ImportFunctionKind::Method {
+        class: class_name_str,
+        ty: class_ty.clone(),
+        kind,
+    })
 }
 
 fn bail_validate_self_generics(span: impl Spanned + ToTokens) -> Result<(), Diagnostic> {

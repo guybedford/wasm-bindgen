@@ -2,7 +2,7 @@
 //! with all the added metadata necessary to generate Wasm bindings
 //! for it.
 
-use crate::{hash::ShortHash, Diagnostic};
+use crate::{Diagnostic, hash::ShortHash};
 use proc_macro2::{Ident, Span};
 use std::hash::{Hash, Hasher};
 use syn::Path;
@@ -53,32 +53,6 @@ impl Default for Program {
 }
 
 impl Program {
-    /// Returns the generic parameter count of the given type name,
-    /// along with the number of parameters that permit defaults
-    /// (guaranteed to be <= the first number).
-    pub fn import_type_generic_count(&self, type_name: &str) -> (usize, usize) {
-        self.imports
-            .iter()
-            .find_map(|import| match &import.kind {
-                ImportKind::Type(import_type) if import_type.rust_name == type_name => {
-                    let total_count = import_type.generics.params.len();
-                    let mut default_count = 0;
-                    for param in import_type.generics.params.iter().rev() {
-                        if let syn::GenericParam::Type(type_param) = param {
-                            if type_param.default.is_some() {
-                                default_count += 1;
-                                continue;
-                            }
-                        };
-                        break;
-                    }
-                    Some((total_count, default_count))
-                }
-                _ => None,
-            })
-            .unwrap_or((0, 0))
-    }
-
     /// Name of the link function for a specific linked module
     pub fn link_function_name(&self, idx: usize) -> String {
         let hash = match &self.linked_modules[idx] {
@@ -238,8 +212,6 @@ pub enum ImportFunctionKind {
         ty: syn::Type,
         /// The kind of method this is
         kind: MethodKind,
-        /// The number of generic params defined by the class type itself
-        generic_param_count: usize,
     },
     /// A standard function
     Normal,

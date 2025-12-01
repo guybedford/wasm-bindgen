@@ -265,7 +265,7 @@ pub struct JsRef<T = AnyType> {
 
 pub type JsAny = JsRef<AnyType>;
 pub type JsValue = JsAny;
-impl<T> GenericType for JsRef<T> {}
+unsafe impl<T> GenericType for JsRef<T> {}
 
 /// Convenience trait to convert to a `JsRef<T>` for `T`
 pub trait ToJs {

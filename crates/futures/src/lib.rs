@@ -41,6 +41,7 @@
 extern crate alloc;
 
 use alloc::rc::Rc;
+use wasm_bindgen::convert::FromWasmAbi;
 use core::cell::RefCell;
 use core::fmt;
 use core::future::Future;
@@ -94,9 +95,9 @@ where
 }
 
 struct Inner<T = AnyType> {
-    result: Option<Result<JsRef<T>, JsValue>>,
+    result: Option<Result<T, JsValue>>,
     task: Option<Waker>,
-    callbacks: Option<(Closure<dyn FnMut(JsRef<T>)>, Closure<dyn FnMut(JsValue)>)>,
+    callbacks: Option<(Closure<dyn FnMut(T)>, Closure<dyn FnMut(JsValue)>)>,
 }
 
 /// A Rust `Future` backed by a JavaScript `Promise`.
@@ -111,7 +112,7 @@ pub struct JsFuture<T = AnyType> {
     inner: Rc<RefCell<Inner<T>>>,
 }
 
-impl<T> GenericType for JsFuture<T> {}
+unsafe impl<T> GenericType for JsFuture<T> {}
 
 impl<T> fmt::Debug for JsFuture<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -119,7 +120,7 @@ impl<T> fmt::Debug for JsFuture<T> {
     }
 }
 
-impl<T: 'static> From<Promise<T>> for JsFuture<T> {
+impl<T: 'static + FromWasmAbi> From<Promise<T>> for JsFuture<T> {
     fn from(js: Promise<T>) -> JsFuture<T> {
         // Use the `then` method to schedule two callbacks, one for the
         // resolved value and one for the rejected value. We're currently
@@ -142,7 +143,7 @@ impl<T: 'static> From<Promise<T>> for JsFuture<T> {
             callbacks: None,
         }));
 
-        fn finish<T>(state: &RefCell<Inner<T>>, val: Result<JsRef<T>, JsValue>) {
+        fn finish<T>(state: &RefCell<Inner<T>>, val: Result<T, JsValue>) {
             let task = {
                 let mut state = state.borrow_mut();
                 assert!(
@@ -169,7 +170,7 @@ impl<T: 'static> From<Promise<T>> for JsFuture<T> {
 
         let resolve = {
             let state = state.clone();
-            Closure::once(move |val: JsRef<T>| finish(&*state, Ok(val)))
+            Closure::once(move |val: T| finish(&*state, Ok(val)))
         };
 
         let reject = {
@@ -186,7 +187,7 @@ impl<T: 'static> From<Promise<T>> for JsFuture<T> {
 }
 
 impl<T> Future for JsFuture<T> {
-    type Output = Result<JsRef<T>, JsValue>;
+    type Output = Result<T, JsValue>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
         let mut inner = self.inner.borrow_mut();
@@ -223,9 +224,9 @@ impl<T> Future for JsFuture<T> {
 /// If the `future` provided panics then the returned `Promise` **will not
 /// resolve**. Instead it will be a leaked promise. This is an unfortunate
 /// limitation of Wasm currently that's hoped to be fixed one day!
-pub fn future_to_promise<F, T>(future: F) -> Promise<T>
+pub fn future_to_promise<F, T: FromWasmAbi + GenericType>(future: F) -> Promise<T>
 where
-    F: Future<Output = Result<JsRef<T>, JsValue>> + 'static,
+    F: Future<Output = Result<T, JsValue>> + 'static,
 {
     let mut future = Some(future);
 
@@ -251,7 +252,7 @@ where
 // /// of the future output type to the promise generic type.
 // pub fn future_to_promise_typed<F, T>(future: F) -> Promise<T>
 // where
-//     F: Future<Output = Result<JsRef<T>, JsValue>> + 'static
+//     F: Future<Output = Result<T, JsValue>> + 'static
 // {
 //     let mut future = Some(future);
 

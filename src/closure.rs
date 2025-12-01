@@ -528,4 +528,4 @@ pub trait IntoWasmClosure<T: ?Sized> {
     fn unsize(self: Box<Self>) -> Box<T>;
 }
 
-impl<T: ?Sized> GenericType for Closure<T> {}
+unsafe impl<T: ?Sized> GenericType for Closure<T> {}
