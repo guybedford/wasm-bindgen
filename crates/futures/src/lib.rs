@@ -233,7 +233,7 @@ where
     let mut future = Some(future);
 
     Promise::new_t(&Closure::new(
-        move |resolve: Function<JsValue, JsValue, T>, reject: Function| {
+        move |resolve: Function<JsRef, JsRef, T>, reject: Function| {
             let future = future.take().unwrap_throw();
 
             spawn_local(async move {

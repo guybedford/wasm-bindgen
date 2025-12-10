@@ -11,7 +11,7 @@ use alloc::string::String;
 use core::fmt;
 use core::mem::{self, ManuallyDrop};
 
-use crate::__rt::marker::SingularGeneric;
+use crate::__rt::marker::{AnyType, SingularGeneric};
 use crate::convert::*;
 use crate::describe::*;
 use crate::JsValue;
@@ -247,7 +247,7 @@ extern "C" {
 ///     // here or return some sort of handle to JS!
 /// }
 /// ```
-pub struct Closure<T: ?Sized> {
+pub struct Closure<T: ?Sized = AnyType> {
     js: JsClosure,
     // careful: must be Box<T> not just T because unsized PhantomData
     // seems to have weird interaction with Pin<>
