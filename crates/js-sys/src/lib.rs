@@ -5027,9 +5027,12 @@ impl convert::TryFrom<JsValue> for Number {
 impl<T> fmt::Debug for Number<T> {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_tuple(&format!("Number<{}>", core::any::type_name::<T>()))
-            .field(&self.value_of())
-            .finish()
+        write!(
+            f,
+            "Number<{}>({})",
+            core::any::type_name::<T>(),
+            self.value_of()
+        )
     }
 }
 
