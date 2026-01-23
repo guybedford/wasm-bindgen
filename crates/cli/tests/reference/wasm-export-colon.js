@@ -336,7 +336,7 @@ function __wbg_get_imports() {
             const ret = arg0.queueMicrotask;
             return ret;
         },
-        __wbg_queueMicrotask_b7b546b9a2e28474: function(arg0) {
+        __wbg_queueMicrotask_2f57c7bbdade1b09: function(arg0) {
             queueMicrotask(arg0);
         },
         __wbg_resolve_ef307d9471c2980e: function(arg0) {
@@ -417,7 +417,7 @@ function __wbg_get_imports() {
             getDataViewMemory0().setInt32(arg0 + 4 * 1, len1, true);
             getDataViewMemory0().setInt32(arg0 + 4 * 0, ptr1, true);
         },
-        __wbg_then_7bf9dea39b689c7e: function(arg0, arg1) {
+        __wbg_then_2479da7ec24d40b7: function(arg0, arg1) {
             const ret = arg0.then(arg1);
             return ret;
         },

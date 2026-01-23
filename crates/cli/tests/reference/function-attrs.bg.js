@@ -115,7 +115,7 @@ export function __wbg_queueMicrotask_0aa0a927f78f5d98(arg0) {
     const ret = arg0.queueMicrotask;
     return ret;
 }
-export function __wbg_queueMicrotask_b7b546b9a2e28474(arg0) {
+export function __wbg_queueMicrotask_2f57c7bbdade1b09(arg0) {
     queueMicrotask(arg0);
 }
 export function __wbg_resolve_ef307d9471c2980e(arg0) {
@@ -156,7 +156,7 @@ export function __wbg_static_accessor_WINDOW_f8727f0cf888e0bd() {
     const ret = typeof window === 'undefined' ? null : window;
     return isLikeNone(ret) ? 0 : addToExternrefTable0(ret);
 }
-export function __wbg_then_7bf9dea39b689c7e(arg0, arg1) {
+export function __wbg_then_2479da7ec24d40b7(arg0, arg1) {
     const ret = arg0.then(arg1);
     return ret;
 }
