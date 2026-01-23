@@ -177,9 +177,6 @@ error[E0277]: `*mut u8` cannot be sent between threads safely
    = help: within `wasm_bindgen::JsValue`, the trait `Send` is not implemented for `*mut u8`
 note: required because it appears within the type `PhantomData<*mut u8>`
   --> $RUST/core/src/marker.rs
-   |
-   | pub struct PhantomData<T: ?Sized>;
-   |            ^^^^^^^^^^^
 note: required because it appears within the type `wasm_bindgen::JsValue`
   --> $WORKSPACE/src/lib.rs
    |
@@ -195,9 +192,6 @@ error[E0277]: `*mut u8` cannot be sent between threads safely
    = help: within `wasm_bindgen::JsValue`, the trait `Send` is not implemented for `*mut u8`
 note: required because it appears within the type `PhantomData<*mut u8>`
   --> $RUST/core/src/marker.rs
-   |
-   | pub struct PhantomData<T: ?Sized>;
-   |            ^^^^^^^^^^^
 note: required because it appears within the type `wasm_bindgen::JsValue`
   --> $WORKSPACE/src/lib.rs
    |
@@ -403,9 +397,6 @@ error[E0277]: `*mut u8` cannot be sent between threads safely
    = help: within `wasm_bindgen::JsValue`, the trait `Send` is not implemented for `*mut u8`
 note: required because it appears within the type `PhantomData<*mut u8>`
   --> $RUST/core/src/marker.rs
-   |
-   | pub struct PhantomData<T: ?Sized>;
-   |            ^^^^^^^^^^^
 note: required because it appears within the type `wasm_bindgen::JsValue`
   --> $WORKSPACE/src/lib.rs
    |

@@ -70,8 +70,6 @@ extern "C" {
     pub fn to_locale_string(this: &Instant, locales: &JsValue, options: &JsValue) -> JsString;
 }
 
-impl Upcast<Object> for Instant {}
-
 #[wasm_bindgen]
 extern "C" {
     #[wasm_bindgen(js_namespace = Temporal, extends = Object)]
@@ -222,8 +220,6 @@ extern "C" {
     #[wasm_bindgen(method, js_name = getISOFields)]
     pub fn get_iso_fields(this: &PlainDateTime) -> JsValue;
 }
-
-impl Upcast<Object> for PlainDateTime {}
 
 #[wasm_bindgen]
 extern "C" {
@@ -402,8 +398,6 @@ extern "C" {
     pub fn get_iso_fields(this: &ZonedDateTime) -> JsValue;
 }
 
-impl Upcast<Object> for ZonedDateTime {}
-
 #[wasm_bindgen]
 extern "C" {
     #[wasm_bindgen(js_namespace = Temporal, extends = Object)]
@@ -501,8 +495,6 @@ extern "C" {
     pub fn to_locale_string(this: &Duration, locales: &JsValue, options: &JsValue) -> JsString;
 }
 
-impl Upcast<Object> for Duration {}
-
 #[wasm_bindgen]
 extern "C" {
     #[wasm_bindgen(js_namespace = Temporal, extends = Object)]
@@ -574,8 +566,6 @@ extern "C" {
     #[wasm_bindgen(method, js_name = getISOFields)]
     pub fn get_iso_fields(this: &PlainTime) -> JsValue;
 }
-
-impl Upcast<Object> for PlainTime {}
 
 #[wasm_bindgen]
 extern "C" {
@@ -757,8 +747,6 @@ extern "C" {
     pub fn get_iso_fields(this: &PlainYearMonth) -> JsValue;
 }
 
-impl Upcast<Object> for PlainYearMonth {}
-
 #[wasm_bindgen]
 extern "C" {
     /// A date without a year component. This is useful to express
@@ -827,8 +815,6 @@ extern "C" {
     #[wasm_bindgen(method, js_name = getISOFields)]
     pub fn get_iso_fields(this: &PlainMonthDay) -> JsValue;
 }
-
-impl Upcast<Object> for PlainMonthDay {}
 
 #[wasm_bindgen]
 extern "C" {
@@ -1037,8 +1023,6 @@ extern "C" {
     #[wasm_bindgen(method, js_name = getISOFields)]
     pub fn get_iso_fields(this: &PlainDate) -> JsValue;
 }
-
-impl Upcast<Object> for PlainDate {}
 
 pub mod Now {
     use super::*;
