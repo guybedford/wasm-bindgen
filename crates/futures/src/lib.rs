@@ -49,12 +49,12 @@ use core::pin::Pin;
 use core::task::{Context, Poll, Waker};
 #[cfg(all(target_arch = "wasm32", feature = "std", panic = "unwind"))]
 use futures_util::FutureExt;
-use js_sys::{AnyFunction, TypedFunction, Promise};
+use js_sys::{AnyFunction, Promise, TypedFunction};
 use wasm_bindgen::__rt::marker::ErasableGeneric;
 #[cfg(all(target_arch = "wasm32", feature = "std", panic = "unwind"))]
 use wasm_bindgen::__rt::panic_to_panic_error;
 use wasm_bindgen::convert::{FromWasmAbi, Upcast};
-use wasm_bindgen::{prelude::*, AsUpcast};
+use wasm_bindgen::{prelude::*, AsUpcast, JsError};
 
 mod queue;
 #[cfg_attr(docsrs, doc(cfg(feature = "futures-core-03-stream")))]
@@ -103,8 +103,8 @@ struct Inner<T = JsValue> {
     result: Option<Result<T, JsValue>>,
     task: Option<Waker>,
     callbacks: Option<(
-        Closure<dyn FnMut(T) -> Result<(), JsValue>>,
-        Closure<dyn FnMut(JsValue) -> Result<(), JsValue>>,
+        Closure<dyn FnMut(T) -> Result<(), JsError>>,
+        Closure<dyn FnMut(JsValue) -> Result<(), JsError>>,
     )>,
 }
 

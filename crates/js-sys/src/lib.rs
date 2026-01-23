@@ -38,7 +38,7 @@ use wasm_bindgen::convert::{AsUpcast, FromWasmAbi, Upcast};
 use wasm_bindgen::Undefined;
 
 pub use wasm_bindgen;
-use wasm_bindgen::{prelude::*, ErasableGeneric, Promising};
+use wasm_bindgen::{prelude::*, ErasableGeneric, JsError, Promising};
 
 // When adding new imports:
 //
@@ -516,7 +516,7 @@ extern "C" {
     #[wasm_bindgen(static_method_of = Array, catch, js_name = from)]
     pub fn from_iterable_map<T, I: Iterable<Item = T>, U>(
         val: &I,
-        map: &mut dyn FnMut(T, u32) -> Result<U, JsValue>,
+        map: &mut dyn FnMut(T, u32) -> Result<U, JsError>,
     ) -> Result<Array<U>, JsValue>;
 
     /// The `Array.fromAsync()` static method creates a new, shallow-copied `Array` instance
@@ -535,7 +535,7 @@ extern "C" {
     #[wasm_bindgen(static_method_of = Array, catch, js_name = fromAsync)]
     pub fn from_async_map<T, U, I: AsyncIterable<Item = T>, R: Promising<Resolution = U>>(
         val: &I,
-        map: &Closure<dyn FnMut(T, u32) -> Result<R, JsValue>>,
+        map: &Closure<dyn FnMut(T, u32) -> Result<R, JsError>>,
     ) -> Result<Promise<Array<U>>, JsValue>;
 
     /// The `copyWithin()` method shallow copies part of an array to another
@@ -568,7 +568,7 @@ extern "C" {
     #[wasm_bindgen(method, js_name = every, catch)]
     pub fn try_every<T>(
         this: &Array<T>,
-        predicate: &mut dyn FnMut(T, u32) -> Result<bool, JsValue>,
+        predicate: &mut dyn FnMut(T, u32) -> Result<bool, JsError>,
     ) -> Result<bool, JsValue>;
 
     /// The `fill()` method fills all the elements of an array from a start index
@@ -597,7 +597,7 @@ extern "C" {
     #[wasm_bindgen(method, js_name = filter, catch)]
     pub fn try_filter<T>(
         this: &Array<T>,
-        predicate: &mut dyn FnMut(T, u32) -> Result<bool, JsValue>,
+        predicate: &mut dyn FnMut(T, u32) -> Result<bool, JsError>,
     ) -> Result<Array<T>, JsValue>;
 
     // Next major: return an Option<T>
@@ -618,7 +618,7 @@ extern "C" {
     #[wasm_bindgen(method, js_name = find, catch)]
     pub fn try_find<T>(
         this: &Array<T>,
-        predicate: &mut dyn FnMut(T, u32) -> Result<bool, JsValue>,
+        predicate: &mut dyn FnMut(T, u32) -> Result<bool, JsError>,
     ) -> Result<Option<T>, JsValue>;
 
     /// The `findIndex()` method returns the index of the first element in the array that
@@ -640,7 +640,7 @@ extern "C" {
     #[wasm_bindgen(method, js_name = findIndex, catch)]
     pub fn try_find_index<T>(
         this: &Array<T>,
-        predicate: &mut dyn FnMut(T, u32) -> Result<bool, JsValue>,
+        predicate: &mut dyn FnMut(T, u32) -> Result<bool, JsError>,
     ) -> Result<i32, JsValue>;
 
     // Next major: return Option<T>
@@ -663,7 +663,7 @@ extern "C" {
     #[wasm_bindgen(method, js_name = findLast, catch)]
     pub fn try_find_last<T>(
         this: &Array<T>,
-        predicate: &mut dyn FnMut(T, u32) -> Result<bool, JsValue>,
+        predicate: &mut dyn FnMut(T, u32) -> Result<bool, JsError>,
     ) -> Result<T, JsValue>;
 
     /// The `findLastIndex()` method of Array instances iterates the array in reverse order
@@ -687,7 +687,7 @@ extern "C" {
     #[wasm_bindgen(method, js_name = findLastIndex, catch)]
     pub fn try_find_last_index<T>(
         this: &Array<T>,
-        predicate: &mut dyn FnMut(T, u32) -> Result<bool, JsValue>,
+        predicate: &mut dyn FnMut(T, u32) -> Result<bool, JsError>,
     ) -> Result<i32, JsValue>;
 
     /// The `flat()` method creates a new array with all sub-array elements concatenated into it
@@ -723,7 +723,7 @@ extern "C" {
     #[wasm_bindgen(method, js_name = forEach, catch)]
     pub fn try_for_each<T>(
         this: &Array<T>,
-        callback: &mut dyn FnMut(T, u32) -> Result<(), JsValue>,
+        callback: &mut dyn FnMut(T, u32) -> Result<(), JsError>,
     ) -> Result<(), JsValue>;
 
     /// The `includes()` method determines whether an array includes a certain
@@ -807,7 +807,7 @@ extern "C" {
     #[wasm_bindgen(method, js_name = map, catch)]
     pub fn try_map<T, U>(
         this: &Array<T>,
-        predicate: &mut dyn FnMut(T, u32) -> Result<U, JsValue>,
+        predicate: &mut dyn FnMut(T, u32) -> Result<U, JsError>,
     ) -> Result<Array<U>, JsValue>;
 
     /// The `Array.of()` method creates a new Array instance with a variable
@@ -905,7 +905,7 @@ extern "C" {
     #[wasm_bindgen(method, js_name = reduce, catch)]
     pub fn try_reduce<T, A>(
         this: &Array<T>,
-        predicate: &mut dyn FnMut(A, T, u32) -> Result<A, JsValue>,
+        predicate: &mut dyn FnMut(A, T, u32) -> Result<A, JsError>,
         initial_value: &A,
     ) -> Result<A, JsValue>;
 
@@ -930,7 +930,7 @@ extern "C" {
     #[wasm_bindgen(method, js_name = reduceRight, catch)]
     pub fn try_reduce_right<T, A>(
         this: &Array<T>,
-        predicate: &mut dyn FnMut(JsValue, T, u32) -> Result<A, JsValue>,
+        predicate: &mut dyn FnMut(JsValue, T, u32) -> Result<A, JsError>,
         initial_value: &A,
     ) -> Result<A, JsValue>;
 
@@ -993,7 +993,7 @@ extern "C" {
     #[wasm_bindgen(method, js_name = some, catch)]
     pub fn try_some<T>(
         this: &Array<T>,
-        predicate: &mut dyn FnMut(T) -> Result<bool, JsValue>,
+        predicate: &mut dyn FnMut(T) -> Result<bool, JsError>,
     ) -> Result<bool, JsValue>;
 
     /// The `sort()` method sorts the elements of an array in place and returns
@@ -1021,7 +1021,7 @@ extern "C" {
     #[wasm_bindgen(method, js_name = sort, catch)]
     pub fn try_sort_by<T>(
         this: &Array<T>,
-        compare_fn: &mut dyn FnMut(T, T) -> Result<i32, JsValue>,
+        compare_fn: &mut dyn FnMut(T, T) -> Result<i32, JsError>,
     ) -> Result<Array<T>, JsValue>;
 
     /// The `splice()` method changes the contents of an array by removing existing elements and/or
@@ -1074,7 +1074,7 @@ extern "C" {
     #[wasm_bindgen(method, js_name = toSorted, catch)]
     pub fn try_to_sorted_by<T>(
         this: &Array<T>,
-        compare_fn: &mut dyn FnMut(T, T) -> Result<i32, JsValue>,
+        compare_fn: &mut dyn FnMut(T, T) -> Result<i32, JsError>,
     ) -> Result<Array<T>, JsValue>;
 
     /// The `toSpliced()` method returns a new array with some elements removed and/or
@@ -4101,7 +4101,7 @@ extern "C" {
     #[wasm_bindgen(method, js_name = forEach, catch)]
     pub fn try_for_each<K, V>(
         this: &Map<K, V>,
-        callback: &mut dyn FnMut(V, K) -> Result<(), JsValue>,
+        callback: &mut dyn FnMut(V, K) -> Result<(), JsError>,
     ) -> Result<(), JsValue>;
 
     /// The `get()` method returns a specified element from a Map object.
@@ -6596,7 +6596,7 @@ extern "C" {
     #[wasm_bindgen(method, js_name = forEach, catch)]
     pub fn try_for_each<T>(
         this: &Set<T>,
-        callback: &mut dyn FnMut(T) -> Result<(), JsValue>,
+        callback: &mut dyn FnMut(T) -> Result<(), JsError>,
     ) -> Result<(), JsValue>;
 
     /// The `has()` method returns a boolean indicating whether an element with
@@ -7367,7 +7367,7 @@ pub mod JSON {
         #[wasm_bindgen(catch, js_namespace = JSON, js_name = stringify)]
         pub fn stringify_with_replacer_func(
             obj: &JsValue,
-            replacer: &mut dyn FnMut(JsString, JsValue) -> Result<Option<JsValue>, JsValue>,
+            replacer: &mut dyn FnMut(JsString, JsValue) -> Result<Option<JsValue>, JsError>,
             space: Option<&str>,
         ) -> Result<JsString, JsValue>;
 
@@ -8747,7 +8747,7 @@ extern "C" {
     #[wasm_bindgen(method, js_name = catch)]
     pub fn catch_map<T, R: Promising<Resolution = T>>(
         this: &Promise<T>,
-        cb: &Closure<dyn FnMut(T) -> Result<R, JsValue>>,
+        cb: &Closure<dyn FnMut(T) -> Result<R, JsError>>,
     ) -> Promise<T>;
 
     // Next major: then_map for then, deprecate then_map
@@ -8765,8 +8765,8 @@ extern "C" {
     #[wasm_bindgen(method, js_name = then)]
     pub fn then_with_reject<T, U: ErasableGeneric, R: Promising<Resolution = U>>(
         this: &Promise<T>,
-        resolve: &Closure<dyn FnMut(T) -> Result<R, JsValue>>,
-        reject: &Closure<dyn FnMut(JsValue) -> Result<R, JsValue>>,
+        resolve: &Closure<dyn FnMut(T) -> Result<R, JsError>>,
+        reject: &Closure<dyn FnMut(JsValue) -> Result<R, JsError>>,
     ) -> Promise<U>;
 
     /// Alias for `then()` with a return value.
@@ -8777,7 +8777,7 @@ extern "C" {
     #[wasm_bindgen(method, js_name = then)]
     pub fn then_map<T, U: ErasableGeneric, R: Promising<Resolution = U>>(
         this: &Promise<T>,
-        cb: &Closure<dyn FnMut(T) -> Result<R, JsValue>>,
+        cb: &Closure<dyn FnMut(T) -> Result<R, JsError>>,
     ) -> Promise<U>;
 
     /// The `finally()` method returns a `Promise`. When the promise is settled,
