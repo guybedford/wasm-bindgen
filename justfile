@@ -61,7 +61,7 @@ test-wasm-bindgen-unwind *ARGS="":
     RUST_BACKTRACE=1 \
     WASM_BINDGEN_TEST_ONLY_NODE=1 \
     WASM_BINDGEN_SPLIT_LINKED_MODULES=1 \
-    cargo +nightly test \
+    cargo +nightly-2025-12-01 test \
         -Zbuild-std=std,panic_unwind \
         --target wasm32-unknown-unknown \
         {{ARGS}}
@@ -74,7 +74,7 @@ test-wasm-bindgen-unwind-reinit *ARGS="":
     RUST_BACKTRACE=1 \
     WASM_BINDGEN_TEST_ONLY_NODE=1 \
     WASM_BINDGEN_SPLIT_LINKED_MODULES=1 \
-    cargo +nightly test \
+    cargo +nightly-2025-12-01 test \
         -Zbuild-std=std,panic_unwind \
         --target wasm32-unknown-unknown \
         {{ARGS}} \
