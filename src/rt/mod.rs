@@ -25,6 +25,33 @@ pub mod marker;
 
 pub use wasm_bindgen_macro::BindgenedStruct;
 
+/// This flag is set by the runtime to indicate a critical error has happened
+/// *somewhere*. If this flag is nonzero and we are not already panicking, we
+/// should start. This flag is checked at the FFI boundary.
+pub static ABORT_FLAG: core::sync::atomic::AtomicU32 = core::sync::atomic::AtomicU32::new(0);
+
+/// Check if the abort flag is set and panic if so.
+/// This is called before every JS import to ensure we don't continue
+/// execution after a critical error has been signaled.
+#[inline]
+pub fn check_abort_flag() {
+    if ABORT_FLAG.load(core::sync::atomic::Ordering::Relaxed) != 0 {
+        // Once core::intrinsics:abort() is stabilized, use that here instead
+        #[cfg(target_arch = "wasm32")]
+        core::arch::wasm32::unreachable();
+        #[cfg(not(target_arch = "wasm32"))]
+        panic!("Abort flag set");
+    }
+}
+
+/// Wrapper implementation for JsValue errors, with atomics and std handling
+pub fn js_panic(err: JsValue) {
+    #[cfg(all(feature = "std", not(target_feature = "atomics")))]
+    ::std::panic::panic_any(err);
+    #[cfg(not(all(feature = "std", not(target_feature = "atomics"))))]
+    ::core::panic!("{:?}", err);
+}
+
 // Cast between arbitrary types supported by wasm-bindgen by going via JS.
 //
 // The implementation generates a no-op JS adapter that simply takes an argument
@@ -415,6 +442,15 @@ impl<T: ?Sized> Drop for RefMut<'_, T> {
     }
 }
 
+#[cfg(panic = "unwind")]
+fn borrow_fail() -> ! {
+    panic!(
+        "recursive use of an object detected which would lead to \
+		 unsafe aliasing in rust",
+    )
+}
+
+#[cfg(not(panic = "unwind"))]
 fn borrow_fail() -> ! {
     super::throw_str(
         "recursive use of an object detected which would lead to \
@@ -615,6 +651,13 @@ pub fn link_mem_intrinsics() {
     crate::link::link_intrinsics();
 }
 
+/// Exported function for JS to set the abort flag.
+/// When set to a non-zero value, any subsequent JS import call will panic.
+#[no_mangle]
+pub extern "C" fn __wbindgen_set_abort_flag(value: u32) {
+    ABORT_FLAG.store(value, core::sync::atomic::Ordering::Relaxed);
+}
+
 #[cfg_attr(target_feature = "atomics", thread_local)]
 static GLOBAL_EXNDATA: ThreadLocalWrapper<Cell<[u32; 2]>> = ThreadLocalWrapper(Cell::new([0; 2]));
 
@@ -782,6 +825,12 @@ extern "C" {
 
 #[cfg(all(target_arch = "wasm32", feature = "std", panic = "unwind"))]
 pub fn panic_to_panic_error(val: std::boxed::Box<dyn Any + Send>) -> JsValue {
+    #[cfg(not(target_feature = "atomics"))]
+    {
+        if let Some(s) = val.downcast_ref::<JsValue>() {
+            return __wbindgen_panic_error(&s);
+        }
+    }
     let maybe_panic_msg: Option<&str> = if let Some(s) = val.downcast_ref::<&str>() {
         Some(s)
     } else if let Some(s) = val.downcast_ref::<std::string::String>() {

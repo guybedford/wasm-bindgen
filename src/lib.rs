@@ -155,6 +155,11 @@ pub struct JsValue {
     _marker: PhantomData<*mut u8>, // not at all threadsafe
 }
 
+#[cfg(not(target_feature = "atomics"))]
+unsafe impl Send for JsValue {}
+#[cfg(not(target_feature = "atomics"))]
+unsafe impl Sync for JsValue {}
+
 impl JsValue {
     /// The `null` JS value constant.
     pub const NULL: JsValue = JsValue::_new(__rt::JSIDX_NULL);
