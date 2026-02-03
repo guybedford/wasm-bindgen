@@ -610,6 +610,8 @@ impl Future for ExecuteTests {
                 Some(test) => test,
                 None => break,
             };
+            // Output test invocation log for debugging failures with --nocapture
+            console_log!("Invoking test: {}", test.name);
             let result = match test.future.as_mut().poll(cx) {
                 Poll::Ready(result) => result,
                 Poll::Pending => {
