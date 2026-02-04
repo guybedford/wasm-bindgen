@@ -2867,12 +2867,6 @@ if (require('worker_threads').isMainThread) {{
         });
     }
 
-    fn expose_aborted(&mut self) {
-        intrinsic(&mut self.intrinsics, "aborted".into(), || {
-            "let __wbg_aborted = false;".into()
-        });
-    }
-
     fn generate_reset_state(&mut self) -> Result<(), Error> {
         self.global("let __wbg_instance_id = 0;");
 

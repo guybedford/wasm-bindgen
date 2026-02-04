@@ -796,10 +796,6 @@ fn instruction(
         Instruction::CallExport(_)
         | Instruction::CallAdapter(_)
         | Instruction::DeferFree { .. } => {
-            let should_check_aborted = js.cx.unwind_enabled;
-            if should_check_aborted {
-                js.cx.expose_aborted();
-            }
             let invoc = Invocation::from(instr, js.cx.module);
             let (mut params, results) = invoc.params_results(js.cx);
 
@@ -834,72 +830,17 @@ fn instruction(
             // Call the function through an export of the underlying module.
             let call = invoc.invoke(js.cx, &args, &mut js.prelude, log_error)?;
 
-            let wrap_try_catch = |call| {
-                // If the module is compiled with panic=unwind, panics are not critical errors
-                let catch_exception = if js.cx.has_intrinsic("panic_error") {
-                    "\
-                    catch(e) {
-                        if (!(e instanceof PanicError)) {
-                            debugger;
-                            console.log('ABORT', e);
-                            // wasm.__wbindgen_set_abort_flag(1);
-                            // __wbg_aborted = true;
-                        }
-                        throw e;
-                    }"
-                } else {
-                    "\
-                    catch(e) {
-                        debugger;
-                        console.log('ABORT', e);
-                        // wasm.__wbindgen_set_abort_flag(1);
-                        // __wbg_aborted = true;
-                        throw e;
-                    }"
-                };
-                format!(
-                    "\
-                    if (__wbg_aborted) {{
-                        __wbg_reset_state();
-                    }}
-                    try {{
-                        {call};
-                    }} {catch_exception}
-                    "
-                )
-            };
-
             // And then figure out how to actually handle where the call
             // happens. This is pretty conditional depending on the number of
             // return values of the function.
             match (invoc.defer(), results) {
                 (true, 0) => {
-                    if should_check_aborted {
-                        js.finally(&wrap_try_catch(call));
-                    } else {
-                        js.finally(&format!("{call};"));
-                    }
+                    js.finally(&format!("{call};"));
                 }
                 (true, _) => panic!("deferred calls must have no results"),
-                (false, 0) => {
-                    if should_check_aborted {
-                        js.prelude(&wrap_try_catch(call));
-                    } else {
-                        js.prelude(&format!("{call};"));
-                    }
-                }
+                (false, 0) => js.prelude(&format!("{call};")),
                 (false, n) => {
-                    if should_check_aborted {
-                        let call = format!("ret = {call}");
-                        js.prelude(&format!(
-                            "\
-                            let ret;
-                            {}",
-                            &wrap_try_catch(call)
-                        ));
-                    } else {
-                        js.prelude(&format!("const ret = {call};"));
-                    }
+                    js.prelude(&format!("const ret = {call};"));
                     if n == 1 {
                         js.push("ret".to_string());
                     } else {
@@ -1499,18 +1440,17 @@ fn instruction(
                     js.prelude(&format!(
                         "var cb{i} = ({args}) => {{
                             const a = state{i}.a;
-                            // state{i}.a = 0;
-                            console.log('invoke mutable a:', a, 'b:', state{i}.b);
+                            state{i}.a = 0;
                             try {{
                                 return {wrapper}(a, state{i}.b, {args});
                             }} finally {{
-                                // state{i}.a = a;
+                                state{i}.a = a;
                             }}
                         }};",
                     ));
                 } else {
                     js.prelude(&format!(
-                        "var cb{i} = ({args}) => {{ console.log('invoke immutable a:', state{i}.a, 'b:', state{i}.b); return {wrapper}(state{i}.a, state{i}.b, {args}); }};",
+                        "var cb{i} = ({args}) => {wrapper}(state{i}.a, state{i}.b, {args});",
                     ));
                 }
 
@@ -1518,8 +1458,7 @@ fn instruction(
                 // back to Rust to ensure that any lingering references to the
                 // closure will fail immediately due to null pointers passed in
                 // to Rust.
-                // TODO: temporarily commented out for debugging
-                // js.finally(&format!("state{i}.a = state{i}.b = 0;"));
+                js.finally(&format!("state{i}.a = state{i}.b = 0;"));
                 js.push(format!("cb{i}"));
             }
         }
