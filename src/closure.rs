@@ -270,13 +270,15 @@ impl<'a, T: WasmClosure + ?Sized> ClosureBorrow<'a, T> {
     /// Creates a new borrowed closure
     pub fn new<F>(t: &'a F) -> ClosureBorrow<'a, T>
     where
-        F: MaybeUnwindSafe,
+        F: MaybeUnwindSafe + IntoWasmClosureRef<'a, T>,
     {
-        let (ptr, len): (u32, u32) = unsafe { mem::transmute_copy(t) };
-        // log(&JsValue::from_str(&std::format!(">> {ptr} {len}")));
+        // Coerce to fat pointer (data ptr + vtable ptr)
+        let fat_ptr: &T = t.unsize_ref();
+        let (ptr, vtable): (u32, u32) = unsafe { mem::transmute_copy(&fat_ptr) };
+        log(&JsValue::from_str(&std::format!(">> {ptr} {vtable}")));
         let closure = Closure {
             js: crate::__rt::wbg_cast(BorrowedClosure::<T> {
-                data: WasmSlice { ptr, len },
+                data: WasmSlice { ptr, len: vtable },
                 unwind_safe: true,
                 _marker: PhantomData::<T>,
             }),
@@ -289,15 +291,17 @@ impl<'a, T: WasmClosure + ?Sized> ClosureBorrow<'a, T> {
         }
     }
 
-    /// Creates a new borrowed closure
+    /// Creates a new borrowed closure without unwind safety
     pub fn new_aborting<F>(t: &'a F) -> ClosureBorrow<'a, T>
     where
-        F: MaybeUnwindSafe,
+        F: IntoWasmClosureRef<'a, T>,
     {
-        let (ptr, len): (u32, u32) = unsafe { mem::transmute_copy(t) };
+        // Coerce to fat pointer (data ptr + vtable ptr)
+        let fat_ptr: &T = t.unsize_ref();
+        let (ptr, vtable): (u32, u32) = unsafe { mem::transmute_copy(&fat_ptr) };
         let closure = Closure {
             js: crate::__rt::wbg_cast(BorrowedClosure::<T> {
-                data: WasmSlice { ptr, len },
+                data: WasmSlice { ptr, len: vtable },
                 unwind_safe: false,
                 _marker: PhantomData::<T>,
             }),
@@ -691,8 +695,7 @@ where
 
     fn into_abi(self) -> WasmSlice {
         use core::mem::ManuallyDrop;
-        let (a, b): (usize, usize) =
-            unsafe { mem::transmute_copy(&ManuallyDrop::new(self.data)) };
+        let (a, b): (usize, usize) = unsafe { mem::transmute_copy(&ManuallyDrop::new(self.data)) };
         // Pack unwind_safe into most significant bit (bit 31) of vtable
         let b_with_flag = if self.unwind_safe {
             (b as u32) | 0x80000000
@@ -797,4 +800,10 @@ impl<T: ?Sized + WasmClosure> IntoWasmClosure<T> for T {
     fn unsize(self: Box<Self>) -> Box<T> {
         self
     }
+}
+
+/// Trait for coercing references to closure trait objects.
+#[doc(hidden)]
+pub trait IntoWasmClosureRef<'a, T: ?Sized + 'a> {
+    fn unsize_ref(&'a self) -> &'a T;
 }

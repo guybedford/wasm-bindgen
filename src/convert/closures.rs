@@ -4,7 +4,8 @@ use core::mem;
 #[cfg(all(feature = "std", target_arch = "wasm32", panic = "unwind"))]
 use crate::__rt::maybe_catch_unwind;
 use crate::closure::{
-    Closure, IntoWasmClosure, WasmClosure, WasmClosureFnOnce, WasmClosureFnOnceAbort,
+    Closure, IntoWasmClosure, IntoWasmClosureRef, WasmClosure, WasmClosureFnOnce,
+    WasmClosureFnOnceAbort,
 };
 use crate::convert::slices::WasmSlice;
 use crate::convert::RefFromWasmAbi;
@@ -150,6 +151,13 @@ macro_rules! closures {
             T: 'static + $Fn $FnArgs -> R,
         {
             fn unsize(self: Box<Self>) -> Box<dyn $Fn $FnArgs -> R> { self }
+        }
+
+        impl<'a, T, $($var: 'a,)* R: 'a> IntoWasmClosureRef<'a, dyn $Fn $FnArgs -> R + 'a> for T
+        where
+            T: $Fn $FnArgs -> R + 'a,
+        {
+            fn unsize_ref(&'a self) -> &'a (dyn $Fn $FnArgs -> R + 'a) { self }
         }
     };);
 
