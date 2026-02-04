@@ -666,13 +666,6 @@ pub fn link_mem_intrinsics() {
     crate::link::link_intrinsics();
 }
 
-/// Exported function for JS to set the abort flag.
-/// When set to a non-zero value, any subsequent JS import call will panic.
-#[no_mangle]
-pub extern "C" fn __wbindgen_set_abort_flag(value: u32) {
-    ABORT_FLAG.store(value, core::sync::atomic::Ordering::Relaxed);
-}
-
 #[cfg_attr(target_feature = "atomics", thread_local)]
 static GLOBAL_EXNDATA: ThreadLocalWrapper<Cell<[u32; 2]>> = ThreadLocalWrapper(Cell::new([0; 2]));
 

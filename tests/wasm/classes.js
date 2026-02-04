@@ -255,10 +255,9 @@ exports.js_test_inspectable_classes = () => {
     assert.strictEqual(not_inspectable.toJSON, undefined);
     assert.strictEqual(not_inspectable.toString(), '[object Object]');
     // Non-inspectable classes in Node.js have no special console.log formatting
-    // When compiling with abort-reinit, an additional __wbg_inst field will be present
     const not_inspectable_output = console_log_to_string(not_inspectable);
     assert.match(not_inspectable_output, new RegExp(
-        `^NotInspectable \\{ __wbg_ptr: ${not_inspectable.__wbg_ptr}(, __wbg_inst: 0)? \\}$`
+        `^NotInspectable \\{ __wbg_ptr: ${not_inspectable.__wbg_ptr} \\}$`
     ));
     inspectable.free();
     not_inspectable.free();

@@ -159,19 +159,13 @@ impl<'a, 'b> Builder<'a, 'b> {
         let mut js = JsBuilder::new(self.cx, debug_name);
         if let Some(consumes_self) = self.method {
             let _ = params.next();
-            if js.cx.config.generate_reset_state || js.cx.config.abort_reinit {
-                let abort_check = if js.cx.config.abort_reinit {
-                    js.cx.expose_aborted();
-                    "__wbg_aborted || "
-                } else {
-                    ""
-                };
+            if js.cx.config.generate_reset_state {
                 js.prelude(
-                    &format!("
-                    if ({abort_check}this.__wbg_inst !== undefined && this.__wbg_inst !== __wbg_instance_id) {{
+                    "
+                    if (this.__wbg_inst !== undefined && this.__wbg_inst !== __wbg_instance_id) {
                         throw new Error('Invalid stale object from previous Wasm instance');
-                    }}
-                    "),
+                    }
+                    ",
                 );
             }
             if js.cx.config.debug {
@@ -706,17 +700,8 @@ impl<'a, 'b> JsBuilder<'a, 'b> {
     }
 
     fn assert_not_moved(&mut self, arg: &str) {
-        if self.cx.config.generate_reset_state || self.cx.config.abort_reinit {
+        if self.cx.config.generate_reset_state {
             // Under reset state, we need comprehensive validation
-            if self.cx.config.abort_reinit {
-                self.cx.expose_aborted();
-                self.prelude(
-                    "\
-                    if (__wbg_aborted) {
-                        __wbg_reset_state()
-                    }",
-                );
-            }
             self.prelude(&format!(
                 "\
                 if (({arg}).__wbg_inst !== undefined && ({arg}).__wbg_inst !== __wbg_instance_id) {{
@@ -811,12 +796,7 @@ fn instruction(
         Instruction::CallExport(_)
         | Instruction::CallAdapter(_)
         | Instruction::DeferFree { .. } => {
-            let should_check_aborted = js.cx.unwind_enabled
-                || js.cx.config.abort_reinit
-                    && matches!(
-                        instr,
-                        Instruction::CallExport(_) | Instruction::DeferFree { .. }
-                    );
+            let should_check_aborted = js.cx.unwind_enabled;
             if should_check_aborted {
                 js.cx.expose_aborted();
             }

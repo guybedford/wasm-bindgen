@@ -76,9 +76,6 @@ pub fn process(
     if !cx.start_found {
         cx.discover_main()?;
     }
-    if bindgen.abort_reinit {
-        cx.find_set_abort_flag();
-    }
     cx.find_exn_store();
 
     cx.verify()?;
@@ -1689,22 +1686,6 @@ impl<'a> Context<'a> {
             .exports
             .iter()
             .find(|e| e.name == "__wbindgen_exn_store")
-            .and_then(|e| match e.item {
-                walrus::ExportItem::Function(f) => Some(f),
-                _ => None,
-            });
-    }
-
-    /// Attempts to locate the `__wbindgen_set_abort_flag` intrinsic and stores it in
-    /// our auxiliary information.
-    ///
-    /// This is only invoked if abort reinitialization is enabled
-    fn find_set_abort_flag(&mut self) {
-        self.aux.set_abort_flag = self
-            .module
-            .exports
-            .iter()
-            .find(|e| e.name == "__wbindgen_set_abort_flag")
             .and_then(|e| match e.item {
                 walrus::ExportItem::Function(f) => Some(f),
                 _ => None,
