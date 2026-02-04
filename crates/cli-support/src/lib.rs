@@ -377,6 +377,11 @@ impl Bindgen {
         let thread_count = transforms::threads::run(&mut module)
             .with_context(|| "failed to prepare module for threading")?;
 
+        // Convert imported exception tags (like `__cpp_exception` from "env") to local tags.
+        // This is needed because browsers don't provide these tags, and the module would
+        // fail to instantiate otherwise.
+        transforms::exception_tag::run(&mut module);
+
         // If requested, turn all mangled symbols into prettier unmangled
         // symbols with the help of `rustc-demangle`.
         if self.demangle {

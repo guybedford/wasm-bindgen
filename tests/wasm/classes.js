@@ -3,6 +3,7 @@ const assert = require('assert');
 
 exports.js_simple = () => {
     console.log('1');
+    debugger;
     const r = new wasm.ClassesSimple();
     console.log('2');
     assert.strictEqual(r.add(0), 0);

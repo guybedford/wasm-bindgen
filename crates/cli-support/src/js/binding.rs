@@ -139,8 +139,7 @@ impl<'a, 'b> Builder<'a, 'b> {
         ret_ty_override: &Option<String>,
         ret_desc: &Option<String>,
     ) -> Result<JsFunction, Error> {
-        let abort_reinit = self.cx.config.abort_reinit;
-        if !abort_reinit
+        if !self.cx.unwind_enabled
             && self
                 .cx
                 .aux
@@ -162,6 +161,7 @@ impl<'a, 'b> Builder<'a, 'b> {
             let _ = params.next();
             if js.cx.config.generate_reset_state || js.cx.config.abort_reinit {
                 let abort_check = if js.cx.config.abort_reinit {
+                    js.cx.expose_aborted();
                     "__wbg_aborted || "
                 } else {
                     ""
@@ -280,7 +280,7 @@ impl<'a, 'b> Builder<'a, 'b> {
             js.pre_try + &js.prelude
         };
 
-        if self.catch || abort_reinit {
+        if self.catch || js.cx.unwind_enabled {
             js.cx.expose_handle_error()?;
         }
 
@@ -709,6 +709,7 @@ impl<'a, 'b> JsBuilder<'a, 'b> {
         if self.cx.config.generate_reset_state || self.cx.config.abort_reinit {
             // Under reset state, we need comprehensive validation
             if self.cx.config.abort_reinit {
+                self.cx.expose_aborted();
                 self.prelude(
                     "\
                     if (__wbg_aborted) {
@@ -810,11 +811,15 @@ fn instruction(
         Instruction::CallExport(_)
         | Instruction::CallAdapter(_)
         | Instruction::DeferFree { .. } => {
-            let should_check_aborted = js.cx.config.abort_reinit
-                && matches!(
-                    instr,
-                    Instruction::CallExport(_) | Instruction::DeferFree { .. }
-                );
+            let should_check_aborted = js.cx.unwind_enabled
+                || js.cx.config.abort_reinit
+                    && matches!(
+                        instr,
+                        Instruction::CallExport(_) | Instruction::DeferFree { .. }
+                    );
+            if should_check_aborted {
+                js.cx.expose_aborted();
+            }
             let invoc = Invocation::from(instr, js.cx.module);
             let (mut params, results) = invoc.params_results(js.cx);
 
@@ -856,7 +861,7 @@ fn instruction(
                     catch(e) {
                         if (!(e instanceof PanicError)) {
                             debugger;
-                            console.trace('ABORT');
+                            console.log('ABORT');
                             // wasm.__wbindgen_set_abort_flag(1);
                             // __wbg_aborted = true;
                         }
@@ -866,7 +871,7 @@ fn instruction(
                     "\
                     catch(e) {
                         debugger;
-                        console.trace('ABORT');
+                        console.log('ABORT');
                         // wasm.__wbindgen_set_abort_flag(1);
                         // __wbg_aborted = true;
                         throw e;
@@ -879,7 +884,7 @@ fn instruction(
                     }}
                     try {{
                         {call};
-                    }} {catch_exception} 
+                    }} {catch_exception}
                     "
                 )
             };
