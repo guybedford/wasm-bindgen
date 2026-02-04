@@ -1,6 +1,6 @@
 use crate::descriptor::VectorKind;
 use crate::intrinsic::Intrinsic;
-use crate::transforms::{threads as threads_xform, unstart_start_function};
+use crate::transforms::{exception_tag, threads as threads_xform, unstart_start_function};
 use crate::wit::{
     Adapter, AdapterId, AdapterJsImportKind, AuxExportedMethodKind, AuxReceiverKind, AuxStringEnum,
     AuxValue,
@@ -19,8 +19,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::{fmt, mem};
 use walrus::{FunctionId, ImportId, MemoryId, Module, TableId, ValType};
-use wasm_bindgen_shared::identifier::{is_valid_ident, to_valid_ident};
 use wasm_bindgen_shared::escape_string;
+use wasm_bindgen_shared::identifier::{is_valid_ident, to_valid_ident};
 
 mod binding;
 
@@ -97,6 +97,9 @@ pub struct Context<'a> {
 
     /// If threading is enabled.
     threads_enabled: bool,
+
+    /// If exception handling / unwinding is enabled.
+    unwind_enabled: bool,
 }
 
 /// Definition of a module export
@@ -203,6 +206,7 @@ impl<'a> Context<'a> {
             exports: Default::default(),
             config,
             threads_enabled: threads_xform::is_enabled(module),
+            unwind_enabled: exception_tag::has_exception_tags(module),
             module,
             npm_dependencies: Default::default(),
             wit,
@@ -2535,6 +2539,17 @@ if (require('worker_threads').isMainThread) {{
             .exn_store
             .ok_or_else(|| anyhow!("failed to find `__wbindgen_exn_store` intrinsic"))?;
         let store = self.export_name_of(store);
+        // If unwind is enabled, we need to unwrap WebAssembly.Exception to get the inner payload.
+        // The exception tag has a single externref parameter containing the actual JS exception.
+        let unwrap_wasm_exception = if self.unwind_enabled {
+            "
+                if (e instanceof WebAssembly.Exception) {
+                    e = e.getArg(wasm.__cpp_exception, 0);
+                }
+            "
+        } else {
+            ""
+        };
         match (self.aux.externref_table, self.aux.externref_alloc) {
             (Some(table), Some(alloc)) => {
                 let add = self.expose_add_to_externref_table(table, alloc);
@@ -2545,6 +2560,7 @@ if (require('worker_threads').isMainThread) {{
                             try {{
                                 return f.apply(this, args);
                             }} catch (e) {{
+                                {unwrap_wasm_exception}
                                 const idx = {add}(e);
                                 wasm.{store}(idx);
                             }}
@@ -2563,6 +2579,7 @@ if (require('worker_threads').isMainThread) {{
                             try {{
                                 return f.apply(this, args);
                             }} catch (e) {{
+                                {unwrap_wasm_exception}
                                 wasm.{store}(addHeapObject(e));
                             }}
                         }}
@@ -2576,28 +2593,42 @@ if (require('worker_threads').isMainThread) {{
     }
 
     fn expose_log_error(&mut self) {
+        // If unwind is enabled, unwrap WebAssembly.Exception for better error messages
+        let unwrap_wasm_exception = if self.unwind_enabled {
+            "
+                    let toLog = e;
+                    if (e instanceof WebAssembly.Exception) {
+                        toLog = e.getArg(wasm.__cpp_exception, 0);
+                    }
+            "
+        } else {
+            "let toLog = e;"
+        };
         intrinsic(&mut self.intrinsics, "log_error".into(), || {
-            "
-            function logError(f, args) {
-                try {
-                    return f.apply(this, args);
-                } catch (e) {
-                    let error = (function () {
-                        try {
-                            return e instanceof Error \
-                                ? `${e.message}\\n\\nStack:\\n${e.stack}` \
-                                : e.toString();
-                        } catch(_) {
-                            return \"<failed to stringify thrown value>\";
-                        }
-                    }());
-                    console.error(\"wasm-bindgen: imported JS function that \
-                                    was not marked as `catch` threw an error:\", \
-                                    error);
-                    throw e;
-                }
-            }
-            "
+            format!(
+                "
+                function logError(f, args) {{
+                    try {{
+                        return f.apply(this, args);
+                    }} catch (e) {{
+                        {unwrap_wasm_exception}
+                        let error = (function () {{
+                            try {{
+                                return toLog instanceof Error \
+                                    ? `${{toLog.message}}\\n\\nStack:\\n${{toLog.stack}}` \
+                                    : toLog.toString();
+                            }} catch(_) {{
+                                return \"<failed to stringify thrown value>\";
+                            }}
+                        }}());
+                        console.error(\"wasm-bindgen: imported JS function that \
+                                        was not marked as `catch` threw an error:\", \
+                                        error);
+                        throw e;
+                    }}
+                }}
+                "
+            )
             .into()
         });
     }
@@ -2698,12 +2729,12 @@ if (require('worker_threads').isMainThread) {{
     }
 
     fn get_set_aborted(&self, err_name: &str) -> String {
-        if self.has_intrinsic("PanicError") {
+        if self.unwind_enabled {
             format!(
                 "\
                 if (!({err_name} instanceof PanicError)) {{
                     debugger;
-                    console.trace('ABORT');
+                    console.log('ABORT');
                     // wasm.__wbindgen_set_abort_flag(1);
                     // __wbg_aborted = true;
                 }}
@@ -2712,7 +2743,7 @@ if (require('worker_threads').isMainThread) {{
         } else {
             "\
             debugger;
-            console.trace('ABORT');
+            console.log('ABORT');
             // wasm.__wbindgen_set_abort_flag(1);
             // __wbg_aborted = true;
             "
@@ -2722,6 +2753,10 @@ if (require('worker_threads').isMainThread) {{
 
     fn expose_make_mut_closure(&mut self) {
         self.expose_closure_finalization();
+
+        if self.unwind_enabled {
+            self.expose_aborted();
+        }
 
         let set_aborted = self.get_set_aborted("e");
 
@@ -2756,9 +2791,9 @@ if (require('worker_threads').isMainThread) {{
                     CLOSURE_DTORS.unregister(state);
                 } catch (e) {
                  debugger;
-                    console.trace('ABORT');
-                    wasm.__wbindgen_set_abort_flag(1);
-                    __wbg_aborted = true;
+                    console.log('ABORT');
+                    // wasm.__wbindgen_set_abort_flag(1);
+                    // __wbg_aborted = true;
                     throw e;
                 } "
             } else {
@@ -2820,6 +2855,11 @@ if (require('worker_threads').isMainThread) {{
 
     fn expose_make_closure(&mut self) {
         self.expose_closure_finalization();
+
+        if self.unwind_enabled {
+            self.expose_aborted();
+        }
+
         let set_aborted = self.get_set_aborted("e");
         // For shared closures they can be invoked recursively so we
         // just immediately pass through `this.a`. If we end up
@@ -2852,9 +2892,9 @@ if (require('worker_threads').isMainThread) {{
                     CLOSURE_DTORS.unregister(state);
                 } catch (e) {
                  debugger;
-                    console.trace('ABORT');
-                    wasm.__wbindgen_set_abort_flag(1);
-                    __wbg_aborted = true;
+                    console.log('ABORT');
+                    // wasm.__wbindgen_set_abort_flag(1);
+                    // __wbg_aborted = true;
                     throw e;
                 } "
             } else {
@@ -2928,9 +2968,9 @@ if (require('worker_threads').isMainThread) {{
                             }
                         } catch (e) {
                          debugger;
-                            console.trace('ABORT');
-                            wasm.__wbindgen_set_abort_flag(1);
-                            __wbg_aborted = true
+                            console.log('ABORT');
+                            // wasm.__wbindgen_set_abort_flag(1);
+                            // __wbg_aborted = true
                             throw e;
                         }
                     }"
@@ -2961,18 +3001,30 @@ if (require('worker_threads').isMainThread) {{
         });
     }
 
+    fn expose_aborted(&mut self) {
+        intrinsic(&mut self.intrinsics, "aborted".into(), || {
+            "let __wbg_aborted = false;".into()
+        });
+    }
+
+    /// Call this when abort_reinit is enabled to ensure the set_abort_flag export is available.
+    fn require_set_abort_flag(&mut self) -> Result<(), Error> {
+        let store = self
+            .aux
+            .set_abort_flag
+            .ok_or_else(|| anyhow!("failed to find `__wbindgen_set_abort_flag` intrinsic"))?;
+        self.export_name_of(store);
+        Ok(())
+    }
+
     fn generate_reset_state(&mut self) -> Result<(), Error> {
         self.global("let __wbg_instance_id = 0;");
 
         let mut reset_statements = Vec::new();
 
-        if self.config.abort_reinit {
-            let store = self
-                .aux
-                .set_abort_flag
-                .ok_or_else(|| anyhow!("failed to find `__wbindgen_set_abort_flag` intrinsic"))?;
-            self.export_name_of(store);
-            self.global("let __wbg_aborted = false;");
+        if self.config.abort_reinit || self.unwind_enabled {
+            self.require_set_abort_flag()?;
+            self.expose_aborted();
             reset_statements.push("__wbg_instance_id++;\n__wbg_aborted = false;".to_string());
         } else {
             reset_statements.push("__wbg_instance_id++;".to_string());
@@ -4449,6 +4501,18 @@ if (require('worker_threads').isMainThread) {{
                 assert_eq!(args.len(), 1);
                 self.expose_panic_error();
                 format!("new PanicError({})", args[0])
+            }
+
+            Intrinsic::ExceptionTag => {
+                assert_eq!(args.len(), 0);
+                if !self.unwind_enabled {
+                    bail!(
+                        "`wasm_bindgen::exception_tag` requires exception handling support \
+                         (compile with `-Cpanic=unwind`)"
+                    );
+                }
+                // The exception tag is exported as __cpp_exception by the exception_tag transform
+                "wasm.__cpp_exception".to_string()
             }
         };
         Ok(expr)

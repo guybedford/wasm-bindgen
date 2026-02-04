@@ -1,3 +1,5 @@
+#[cfg(target_arch = "wasm32")]
+use crate::__wbindgen_throw;
 use crate::convert::{FromWasmAbi, IntoWasmAbi, WasmAbi, WasmRet};
 use crate::describe::inform;
 use crate::JsValue;
@@ -38,9 +40,14 @@ pub fn check_abort_flag() {
     if ABORT_FLAG.load(core::sync::atomic::Ordering::Relaxed) != 0 {
         // Once core::intrinsics:abort() is stabilized, use that here instead
         #[cfg(target_arch = "wasm32")]
-        core::arch::wasm32::unreachable();
+        {
+            __wbindgen_throw("Attempted to re-enter previously aborted Wasm instance");
+            unsafe { core::hint::unreachable_unchecked() }
+        }
         #[cfg(not(target_arch = "wasm32"))]
-        panic!("Abort flag set");
+        {
+            panic!("Attempted to re-enter previously aborted Wasm instance");
+        }
     }
 }
 
