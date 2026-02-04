@@ -1,6 +1,8 @@
 use crate::descriptor::VectorKind;
 use crate::intrinsic::Intrinsic;
-use crate::transforms::{exception_tag, threads as threads_xform, unstart_start_function};
+use crate::transforms::{
+    has_local_exception_tags, threads as threads_xform, unstart_start_function,
+};
 use crate::wit::{
     Adapter, AdapterId, AdapterJsImportKind, AuxExportedMethodKind, AuxReceiverKind, AuxStringEnum,
     AuxValue,
@@ -206,7 +208,7 @@ impl<'a> Context<'a> {
             exports: Default::default(),
             config,
             threads_enabled: threads_xform::is_enabled(module),
-            unwind_enabled: exception_tag::has_exception_tags(module),
+            unwind_enabled: has_local_exception_tags(module),
             module,
             npm_dependencies: Default::default(),
             wit,
@@ -2539,17 +2541,6 @@ if (require('worker_threads').isMainThread) {{
             .exn_store
             .ok_or_else(|| anyhow!("failed to find `__wbindgen_exn_store` intrinsic"))?;
         let store = self.export_name_of(store);
-        // If unwind is enabled, we need to unwrap WebAssembly.Exception to get the inner payload.
-        // The exception tag has a single externref parameter containing the actual JS exception.
-        let unwrap_wasm_exception = if self.unwind_enabled {
-            "
-                if (e instanceof WebAssembly.Exception) {
-                    e = e.getArg(wasm.__cpp_exception, 0);
-                }
-            "
-        } else {
-            ""
-        };
         match (self.aux.externref_table, self.aux.externref_alloc) {
             (Some(table), Some(alloc)) => {
                 let add = self.expose_add_to_externref_table(table, alloc);
@@ -2560,7 +2551,6 @@ if (require('worker_threads').isMainThread) {{
                             try {{
                                 return f.apply(this, args);
                             }} catch (e) {{
-                                {unwrap_wasm_exception}
                                 const idx = {add}(e);
                                 wasm.{store}(idx);
                             }}
@@ -2579,7 +2569,6 @@ if (require('worker_threads').isMainThread) {{
                             try {{
                                 return f.apply(this, args);
                             }} catch (e) {{
-                                {unwrap_wasm_exception}
                                 wasm.{store}(addHeapObject(e));
                             }}
                         }}
@@ -2593,42 +2582,28 @@ if (require('worker_threads').isMainThread) {{
     }
 
     fn expose_log_error(&mut self) {
-        // If unwind is enabled, unwrap WebAssembly.Exception for better error messages
-        let unwrap_wasm_exception = if self.unwind_enabled {
-            "
-                    let toLog = e;
-                    if (e instanceof WebAssembly.Exception) {
-                        toLog = e.getArg(wasm.__cpp_exception, 0);
-                    }
-            "
-        } else {
-            "let toLog = e;"
-        };
         intrinsic(&mut self.intrinsics, "log_error".into(), || {
-            format!(
-                "
-                function logError(f, args) {{
-                    try {{
-                        return f.apply(this, args);
-                    }} catch (e) {{
-                        {unwrap_wasm_exception}
-                        let error = (function () {{
-                            try {{
-                                return toLog instanceof Error \
-                                    ? `${{toLog.message}}\\n\\nStack:\\n${{toLog.stack}}` \
-                                    : toLog.toString();
-                            }} catch(_) {{
-                                return \"<failed to stringify thrown value>\";
-                            }}
-                        }}());
-                        console.error(\"wasm-bindgen: imported JS function that \
-                                        was not marked as `catch` threw an error:\", \
-                                        error);
-                        throw e;
-                    }}
-                }}
-                "
-            )
+            "
+            function logError(f, args) {
+                try {
+                    return f.apply(this, args);
+                } catch (e) {
+                    let error = (function () {
+                        try {
+                            return e instanceof Error \
+                                ? `${e.message}\\n\\nStack:\\n${e.stack}` \
+                                : e.toString();
+                        } catch(_) {
+                            return \"<failed to stringify thrown value>\";
+                        }
+                    }());
+                    console.error(\"wasm-bindgen: imported JS function that \
+                                    was not marked as `catch` threw an error:\", \
+                                    error);
+                    throw e;
+                }
+            }
+            "
             .into()
         });
     }
@@ -2731,10 +2706,6 @@ if (require('worker_threads').isMainThread) {{
     fn expose_make_mut_closure(&mut self) {
         self.expose_closure_finalization();
 
-        if self.unwind_enabled {
-            self.expose_aborted();
-        }
-
         // For mutable closures they can't be invoked recursively.
         // To handle that we swap out the `this.a` pointer with zero
         // while we invoke it. If we finish and the closure wasn't
@@ -2800,10 +2771,6 @@ if (require('worker_threads').isMainThread) {{
 
     fn expose_make_closure(&mut self) {
         self.expose_closure_finalization();
-
-        if self.unwind_enabled {
-            self.expose_aborted();
-        }
 
         // For shared closures they can be invoked recursively so we
         // just immediately pass through `this.a`. If we end up
@@ -4273,11 +4240,6 @@ if (require('worker_threads').isMainThread) {{
                 "typeof(v) === 'bigint' ? v : undefined".to_string()
             }
 
-            Intrinsic::Log => {
-                assert_eq!(args.len(), 1);
-                format!("console.log({})", args[0])
-            }
-
             Intrinsic::Throw => {
                 assert_eq!(args.len(), 1);
                 format!("throw new Error({})", args[0])
@@ -4394,18 +4356,6 @@ if (require('worker_threads').isMainThread) {{
                 assert_eq!(args.len(), 1);
                 self.expose_panic_error();
                 format!("new PanicError({})", args[0])
-            }
-
-            Intrinsic::ExceptionTag => {
-                assert_eq!(args.len(), 0);
-                if !self.unwind_enabled {
-                    bail!(
-                        "`wasm_bindgen::exception_tag` requires exception handling support \
-                         (compile with `-Cpanic=unwind`)"
-                    );
-                }
-                // The exception tag is exported as __cpp_exception by the exception_tag transform
-                "wasm.__cpp_exception".to_string()
             }
         };
         Ok(expr)
