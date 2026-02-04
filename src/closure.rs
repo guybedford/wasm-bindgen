@@ -261,18 +261,17 @@ pub struct Closure<T: ?Sized> {
 }
 
 /// Internal closure wrapper type for borrowed closures.
-struct ClosureBorrow<'a, T: ?Sized> {
+struct ClosureBorrow<T: ?Sized> {
     // Use ManuallyDrop to prevent drop glue from running, which would cause
     // the drop checker to be overly conservative about lifetimes.
     // The inner Closure's drop impl does nothing for borrowed closures anyway.
     closure: mem::ManuallyDrop<Closure<T>>,
-    _lifetime: PhantomData<&'a T>,
 }
 
-impl<'a, T: WasmClosure + ?Sized + 'a> ClosureBorrow<'a, T> {
-    fn new<F>(t: &'a mut F) -> ClosureBorrow<'a, T>
+impl<T: WasmClosure + ?Sized> ClosureBorrow<T> {
+    fn new<F>(t: &mut F) -> ClosureBorrow<T>
     where
-        F: UnsizeClosureRef<'a, T> + ?Sized,
+        F: UnsizeClosureRef<T> + ?Sized,
     {
         let t: &mut T = t.unsize_closure_ref();
         let (ptr, len): (u32, u32) = unsafe { mem::transmute_copy(&t) };
@@ -287,13 +286,18 @@ impl<'a, T: WasmClosure + ?Sized + 'a> ClosureBorrow<'a, T> {
         };
         ClosureBorrow {
             closure: mem::ManuallyDrop::new(closure),
-            _lifetime: PhantomData,
         }
     }
 
-    fn new_aborting<F>(t: &'a mut F) -> ClosureBorrow<'a, T>
+    fn new_aborting<F>(t: &mut F) -> ClosureBorrow<T>
     where
-        F: UnsizeClosureRef<'a, T> + ?Sized,
+        F: UnsizeClosureRef<T> + ?Sized,
+    {
+        let t: &mut T = t.unsize_closure_ref();
+        let (ptr, len): (u32, u32) = unsafe { mem::transmute_copy(&t) };
+        let closure = Closure {
+            js: crate::__rt::wbg_cast(BorrowedClosure::<T> {
+                data: WasmSlice { ptr, len },
                 unwind_safe: false,
                 _marker: PhantomData::<T>,
             }),
@@ -301,7 +305,6 @@ impl<'a, T: WasmClosure + ?Sized + 'a> ClosureBorrow<'a, T> {
         };
         ClosureBorrow {
             closure: mem::ManuallyDrop::new(closure),
-            _lifetime: PhantomData,
         }
     }
 }
@@ -394,12 +397,11 @@ where
     /// });
     /// assert_eq!(count, 1);
     /// ```
-    pub fn with<'a, F, R>(t: &'a mut F, f: impl FnOnce(&Closure<T>) -> R) -> R
+    pub fn with<F, R>(t: &mut F, f: impl FnOnce(&Closure<T>) -> R) -> R
     where
-        F: UnsizeClosureRef<'a, T> + ?Sized,
-        T: 'a,
+        F: UnsizeClosureRef<T> + ?Sized,
     {
-        let borrow = ClosureBorrow::<'a, T>::new(t);
+        let borrow = ClosureBorrow::<T>::new(t);
         f(&borrow.closure)
         // borrow is dropped here, before the borrowed data's lifetime ends
     }
@@ -408,12 +410,11 @@ where
     ///
     /// Use this when you don't need panic catching across the JS boundary
     /// or prefer abort-on-panic behavior.
-    pub fn with_aborting<'a, F, R>(t: &'a mut F, f: impl FnOnce(&Closure<T>) -> R) -> R
+    pub fn with_aborting<F, R>(t: &mut F, f: impl FnOnce(&Closure<T>) -> R) -> R
     where
-        F: UnsizeClosureRef<'a, T> + ?Sized,
-        T: 'a,
+        F: UnsizeClosureRef<T> + ?Sized,
     {
-        let borrow = ClosureBorrow::<'a, T>::new_aborting(t);
+        let borrow = ClosureBorrow::<T>::new_aborting(t);
         f(&borrow.closure)
     }
 
@@ -660,7 +661,7 @@ where
     }
 }
 
-impl<'a, T> WasmDescribe for BorrowedClosure<T>
+impl<T> WasmDescribe for BorrowedClosure<T>
 where
     T: WasmClosure + ?Sized,
 {
@@ -834,12 +835,12 @@ impl<T: ?Sized + WasmClosure> IntoWasmClosure<T> for T {
 /// This trait is not stable and it's not recommended to use this in bounds or
 /// implement yourself.
 #[doc(hidden)]
-pub trait UnsizeClosureRef<'a, T: ?Sized + 'a>: 'a {
-    fn unsize_closure_ref(&'a mut self) -> &'a mut T;
+pub trait UnsizeClosureRef<T: ?Sized> {
+    fn unsize_closure_ref(&mut self) -> &mut T;
 }
 
-impl<'a, T: ?Sized + WasmClosure + 'a> UnsizeClosureRef<'a, T> for T {
-    fn unsize_closure_ref(&'a mut self) -> &'a mut T {
+impl<T: ?Sized + WasmClosure> UnsizeClosureRef<T> for T {
+    fn unsize_closure_ref(&mut self) -> &mut T {
         self
     }
 }
