@@ -41,7 +41,7 @@ test-wasm-bindgen *ARGS="":
     WASM_BINDGEN_SPLIT_LINKED_MODULES=1 \
     cargo test \
         --target wasm32-unknown-unknown \
-        -- --skip abort_reinit {{ARGS}}
+        -- --skip abort_reinit {{ARGS}} --nocapture
 
 test-wasm-bindgen-abort-reinit *ARGS="":
     NODE_ARGS="--stack-trace-limit=100" \

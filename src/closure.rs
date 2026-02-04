@@ -6,12 +6,16 @@
 
 #![allow(clippy::fn_to_numeric_cast)]
 
+use crate::__rt;
 use crate::convert::*;
 use crate::describe::*;
 use crate::JsValue;
 use crate::__rt::marker::MaybeUnwindSafe;
+use crate::log;
 use alloc::boxed::Box;
 use alloc::string::String;
+use core::borrow::Borrow;
+use core::cell::RefCell;
 use core::fmt;
 use core::marker::PhantomData;
 use core::mem;
@@ -249,9 +253,66 @@ extern "C" {
 /// ```
 pub struct Closure<T: ?Sized> {
     js: JsClosure,
+    // Whether this is a borrowed closure (no destructor needed on JS side)
+    borrowed: bool,
     // careful: must be Box<T> not just T because unsized PhantomData
     // seems to have weird interaction with Pin<>
     _marker: PhantomData<Box<T>>,
+}
+
+/// Closure wrapper type for borrow
+pub struct ClosureBorrow<'a, T: ?Sized> {
+    closure: Closure<T>,
+    _lifetime: PhantomData<&'a T>,
+}
+
+impl<'a, T: WasmClosure + ?Sized> ClosureBorrow<'a, T> {
+    /// Creates a new borrowed closure
+    pub fn new<F>(t: &'a F) -> ClosureBorrow<'a, T>
+    where
+        F: MaybeUnwindSafe,
+    {
+        let (ptr, len): (u32, u32) = unsafe { mem::transmute_copy(t) };
+        // log(&JsValue::from_str(&std::format!(">> {ptr} {len}")));
+        let closure = Closure {
+            js: crate::__rt::wbg_cast(BorrowedClosure::<T> {
+                data: WasmSlice { ptr, len },
+                unwind_safe: true,
+                _marker: PhantomData::<T>,
+            }),
+            borrowed: true,
+            _marker: PhantomData::<Box<T>>,
+        };
+        ClosureBorrow {
+            closure,
+            _lifetime: PhantomData,
+        }
+    }
+
+    /// Creates a new borrowed closure
+    pub fn new_aborting<F>(t: &'a F) -> ClosureBorrow<'a, T>
+    where
+        F: MaybeUnwindSafe,
+    {
+        let (ptr, len): (u32, u32) = unsafe { mem::transmute_copy(t) };
+        let closure = Closure {
+            js: crate::__rt::wbg_cast(BorrowedClosure::<T> {
+                data: WasmSlice { ptr, len },
+                unwind_safe: false,
+                _marker: PhantomData::<T>,
+            }),
+            borrowed: true,
+            _marker: PhantomData::<Box<T>>,
+        };
+        ClosureBorrow {
+            closure,
+            _lifetime: PhantomData,
+        }
+    }
+
+    pub fn as_ref(&'a self) -> &'a Closure<T> {
+        &self.closure
+    }
 }
 
 fn _assert_compiles<T>(mut pin: core::pin::Pin<&mut Closure<T>>) {
@@ -347,10 +408,8 @@ where
     #[cfg(all(feature = "std", target_arch = "wasm32", panic = "unwind"))]
     fn _wrap(data: Box<T>, unwind_safe: bool) -> Closure<T> {
         Self {
-            js: crate::__rt::wbg_cast(OwnedClosureUnwind {
-                closure: OwnedClosure(data),
-                unwind_safe,
-            }),
+            js: crate::__rt::wbg_cast(OwnedClosureUnwind { data, unwind_safe }),
+            borrowed: false,
             _marker: PhantomData,
         }
     }
@@ -359,6 +418,7 @@ where
     fn _wrap(data: Box<T>, _unwind_safe: bool) -> Closure<T> {
         Self {
             js: crate::__rt::wbg_cast(OwnedClosure(data)),
+            borrowed: false,
             _marker: PhantomData,
         }
     }
@@ -539,8 +599,14 @@ struct OwnedClosure<T: ?Sized>(Box<T>);
 /// when panic=unwind to pass both the closure and the unwind_safe flag to JS.
 #[cfg(all(feature = "std", target_arch = "wasm32", panic = "unwind"))]
 struct OwnedClosureUnwind<T: ?Sized> {
-    closure: OwnedClosure<T>,
+    data: Box<T>,
     unwind_safe: bool,
+}
+
+struct BorrowedClosure<T: ?Sized> {
+    data: WasmSlice,
+    unwind_safe: bool,
+    _marker: PhantomData<T>,
 }
 
 unsafe extern "C" fn destroy<T: ?Sized>(a: usize, mut b: usize) {
@@ -565,6 +631,19 @@ where
     }
 }
 
+impl<'a, T> WasmDescribe for BorrowedClosure<T>
+where
+    T: WasmClosure + ?Sized,
+{
+    #[cfg_attr(wasm_bindgen_unstable_test_coverage, coverage(off))]
+    fn describe() {
+        inform(CLOSURE);
+        inform(0);
+        inform(T::IS_MUT as u32);
+        T::describe();
+    }
+}
+
 impl<T> IntoWasmAbi for OwnedClosure<T>
 where
     T: WasmClosure + ?Sized,
@@ -578,6 +657,16 @@ where
             ptr: a as u32,
             len: b as u32,
         }
+    }
+}
+
+impl<T> IntoWasmAbi for BorrowedClosure<T>
+where
+    T: WasmClosure + ?Sized,
+{
+    type Abi = WasmSlice;
+    fn into_abi(self) -> WasmSlice {
+        self.data
     }
 }
 
@@ -603,7 +692,7 @@ where
     fn into_abi(self) -> WasmSlice {
         use core::mem::ManuallyDrop;
         let (a, b): (usize, usize) =
-            unsafe { mem::transmute_copy(&ManuallyDrop::new(self.closure)) };
+            unsafe { mem::transmute_copy(&ManuallyDrop::new(self.data)) };
         // Pack unwind_safe into most significant bit (bit 31) of vtable
         let b_with_flag = if self.unwind_safe {
             (b as u32) | 0x80000000
@@ -672,6 +761,10 @@ where
     T: ?Sized,
 {
     fn drop(&mut self) {
+        // For borrowed closures, there's no destructor or _wbg_cb_unref on the JS side
+        if self.borrowed {
+            return;
+        }
         // Decrease refcount on the JS side, this will automatically free
         // the Rust data if we're the last owner.
         self.js._wbg_cb_unref();

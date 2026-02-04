@@ -861,7 +861,7 @@ fn instruction(
                     catch(e) {
                         if (!(e instanceof PanicError)) {
                             debugger;
-                            console.log('ABORT');
+                            console.log('ABORT', e);
                             // wasm.__wbindgen_set_abort_flag(1);
                             // __wbg_aborted = true;
                         }
@@ -871,7 +871,7 @@ fn instruction(
                     "\
                     catch(e) {
                         debugger;
-                        console.log('ABORT');
+                        console.log('ABORT', e);
                         // wasm.__wbindgen_set_abort_flag(1);
                         // __wbg_aborted = true;
                         throw e;
@@ -1516,17 +1516,18 @@ fn instruction(
                     js.prelude(&format!(
                         "var cb{i} = ({args}) => {{
                             const a = state{i}.a;
-                            state{i}.a = 0;
+                            // state{i}.a = 0;
+                            console.log('invoke mutable a:', a, 'b:', state{i}.b);
                             try {{
                                 return {wrapper}(a, state{i}.b, {args});
                             }} finally {{
-                                state{i}.a = a;
+                                // state{i}.a = a;
                             }}
                         }};",
                     ));
                 } else {
                     js.prelude(&format!(
-                        "var cb{i} = ({args}) => {wrapper}(state{i}.a, state{i}.b, {args});",
+                        "var cb{i} = ({args}) => {{ console.log('invoke immutable a:', state{i}.a, 'b:', state{i}.b); return {wrapper}(state{i}.a, state{i}.b, {args}); }};",
                     ));
                 }
 
@@ -1534,7 +1535,8 @@ fn instruction(
                 // back to Rust to ensure that any lingering references to the
                 // closure will fail immediately due to null pointers passed in
                 // to Rust.
-                js.finally(&format!("state{i}.a = state{i}.b = 0;"));
+                // TODO: temporarily commented out for debugging
+                // js.finally(&format!("state{i}.a = state{i}.b = 0;"));
                 js.push(format!("cb{i}"));
             }
         }
