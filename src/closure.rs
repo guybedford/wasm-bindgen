@@ -269,16 +269,15 @@ struct ClosureBorrow<'a, T: ?Sized> {
     _lifetime: PhantomData<&'a T>,
 }
 
-impl<'a, T: WasmClosure + ?Sized + 'a> ClosureBorrow<'a, T> {
-    fn new<F>(t: &'a mut F) -> ClosureBorrow<'a, T>
-    where
-        F: UnsizeClosureRef<'a, T> + ?Sized,
+impl<'a, T: WasmClosure + ?Sized> ClosureBorrow<'a, T> {
+    /// Creates a new borrowed closure
+    pub fn new<F>(t: &'a F) -> ClosureBorrow<'a, T>
     {
         let t: &mut T = t.unsize_closure_ref();
         let (ptr, len): (u32, u32) = unsafe { mem::transmute_copy(&t) };
         let closure = Closure {
             js: crate::__rt::wbg_cast(BorrowedClosure::<T> {
-                data: WasmSlice { ptr, len: vtable },
+                data: WasmSlice { ptr, len },
                 unwind_safe: true,
                 _marker: PhantomData::<T>,
             }),
@@ -299,7 +298,7 @@ impl<'a, T: WasmClosure + ?Sized + 'a> ClosureBorrow<'a, T> {
         let (ptr, len): (u32, u32) = unsafe { mem::transmute_copy(&t) };
         let closure = Closure {
             js: crate::__rt::wbg_cast(BorrowedClosure::<T> {
-                data: WasmSlice { ptr, len: vtable },
+                data: WasmSlice { ptr, len },
                 unwind_safe: false,
                 _marker: PhantomData::<T>,
             }),
@@ -703,11 +702,14 @@ where
 {
     type Abi = WasmSlice;
     fn into_abi(self) -> WasmSlice {
-        let WasmSlice { ptr, mut len } = self.data;
+        let WasmSlice {ptr, mut len} = self.data;
         if self.unwind_safe {
             len |= 0x80000000;
         }
-        WasmSlice { ptr, len }
+        WasmSlice {
+            ptr,
+            len,
+        }
     }
 }
 
