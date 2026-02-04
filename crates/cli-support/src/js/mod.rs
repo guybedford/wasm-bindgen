@@ -2734,7 +2734,7 @@ if (require('worker_threads').isMainThread) {{
                 "\
                 if (!({err_name} instanceof PanicError)) {{
                     debugger;
-                    console.log('ABORT');
+                    console.log('ABORT', e);
                     // wasm.__wbindgen_set_abort_flag(1);
                     // __wbg_aborted = true;
                 }}
@@ -2743,7 +2743,7 @@ if (require('worker_threads').isMainThread) {{
         } else {
             "\
             debugger;
-            console.log('ABORT');
+            console.log('ABORT', e);
             // wasm.__wbindgen_set_abort_flag(1);
             // __wbg_aborted = true;
             "
@@ -2791,7 +2791,7 @@ if (require('worker_threads').isMainThread) {{
                     CLOSURE_DTORS.unregister(state);
                 } catch (e) {
                  debugger;
-                    console.log('ABORT');
+                    console.log('ABORT', e);
                     // wasm.__wbindgen_set_abort_flag(1);
                     // __wbg_aborted = true;
                     throw e;
@@ -2839,12 +2839,16 @@ if (require('worker_threads').isMainThread) {{
                             real._wbg_cb_unref();
                         }}
                     }};
-                    real._wbg_cb_unref = () => {{
-                        if (--state.cnt === 0) {{
-                            {safe_destructor}
-                        }}
-                    }};
-                    CLOSURE_DTORS.register(real, state, state);
+                    if (dtor) {{
+                        real._wbg_cb_unref = () => {{
+                            if (--state.cnt === 0) {{
+                                {safe_destructor}
+                            }}
+                        }};
+                        CLOSURE_DTORS.register(real, state, state);
+                    }} else {{
+                        real._wbg_cb_unref = () => {{}};
+                    }}
                     return real;
                 }}
                 "
@@ -2892,7 +2896,7 @@ if (require('worker_threads').isMainThread) {{
                     CLOSURE_DTORS.unregister(state);
                 } catch (e) {
                  debugger;
-                    console.log('ABORT');
+                    console.log('ABORT', e);
                     // wasm.__wbindgen_set_abort_flag(1);
                     // __wbg_aborted = true;
                     throw e;
@@ -2937,12 +2941,16 @@ if (require('worker_threads').isMainThread) {{
                             real._wbg_cb_unref();
                         }}
                     }};
-                    real._wbg_cb_unref = () => {{
-                        if (--state.cnt === 0) {{
-                            {safe_destructor}
-                        }}
-                    }};
-                    CLOSURE_DTORS.register(real, state, state);
+                    if (dtor) {{
+                        real._wbg_cb_unref = () => {{
+                            if (--state.cnt === 0) {{
+                                {safe_destructor}
+                            }}
+                        }};
+                        CLOSURE_DTORS.register(real, state, state);
+                    }} else {{
+                        real._wbg_cb_unref = () => {{}};
+                    }}
                     return real;
                 }}
                 "
@@ -2968,7 +2976,7 @@ if (require('worker_threads').isMainThread) {{
                             }
                         } catch (e) {
                          debugger;
-                            console.log('ABORT');
+                            console.log('ABORT', e);
                             // wasm.__wbindgen_set_abort_flag(1);
                             // __wbg_aborted = true
                             throw e;

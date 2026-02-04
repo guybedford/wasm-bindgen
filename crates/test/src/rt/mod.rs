@@ -93,6 +93,7 @@ use alloc::format;
 use alloc::rc::Rc;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
+use wasm_bindgen::closure::ClosureBorrow;
 use core::cell::{Cell, RefCell};
 use core::fmt::{self, Display};
 use core::future::Future;
@@ -797,7 +798,7 @@ struct TestFuture<F> {
 #[wasm_bindgen]
 extern "C" {
     #[wasm_bindgen(catch)]
-    fn __wbg_test_invoke(f: &mut dyn FnMut()) -> Result<(), JsValue>;
+    fn __wbg_test_invoke(f: &Closure<dyn FnMut()>) -> Result<(), JsValue>;
 }
 
 impl<F: Future<Output = Result<(), JsValue>>> Future for TestFuture<F> {
@@ -810,11 +811,11 @@ impl<F: Future<Output = Result<(), JsValue>>> Future for TestFuture<F> {
         let test = unsafe { Pin::map_unchecked_mut(self, |me| &mut me.test) };
         let mut future_output = None;
         let result = CURRENT_OUTPUT.set(&output, || {
-            let mut test = Some(test);
-            __wbg_test_invoke(&mut || {
-                let test = test.take().unwrap_throw();
+            let mut test = AssertUnwindSafe(Some(test));
+            __wbg_test_invoke(ClosureBorrow::new(&AssertUnwindSafe(|| {
+                let test = test.0.take().unwrap_throw();
                 future_output = Some(test.poll(cx))
-            })
+            })).as_ref())
         });
         match (result, future_output) {
             (_, Some(Poll::Ready(result))) => Poll::Ready(result),
