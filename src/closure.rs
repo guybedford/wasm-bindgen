@@ -260,8 +260,8 @@ pub struct Closure<T: ?Sized> {
     _marker: PhantomData<Box<T>>,
 }
 
-/// Internal closure wrapper type for borrowed closures.
-struct ClosureBorrow<'a, T: ?Sized> {
+/// Closure wrapper type for borrow
+pub struct ClosureBorrow<'a, T: ?Sized> {
     // Use ManuallyDrop to prevent drop glue from running, which would cause
     // the drop checker to be overly conservative about lifetimes.
     // The inner Closure's drop impl does nothing for borrowed closures anyway.
@@ -269,9 +269,14 @@ struct ClosureBorrow<'a, T: ?Sized> {
     _lifetime: PhantomData<&'a T>,
 }
 
-impl<'a, T: WasmClosure + ?Sized> ClosureBorrow<'a, T> {
-    /// Creates a new borrowed closure
-    pub fn new<F>(t: &'a F) -> ClosureBorrow<'a, T>
+impl<'a, T: WasmClosure + ?Sized + 'a> ClosureBorrow<'a, T> {
+    /// Creates a new borrowed closure from a concrete closure type or trait object.
+    ///
+    /// This works with both concrete closure types (`&mut || {}`) and trait objects
+    /// (`&mut dyn FnMut()`).
+    pub fn new<F>(t: &'a mut F) -> ClosureBorrow<'a, T>
+    where
+        F: UnsizeClosureRef<'a, T> + ?Sized,
     {
         let t: &mut T = t.unsize_closure_ref();
         let (ptr, len): (u32, u32) = unsafe { mem::transmute_copy(&t) };
@@ -290,25 +295,46 @@ impl<'a, T: WasmClosure + ?Sized> ClosureBorrow<'a, T> {
         }
     }
 
-    fn new_aborting<F>(t: &'a mut F) -> ClosureBorrow<'a, T>
+    /// Creates a new borrowed closure from a concrete closure type or trait object.
+    ///
+    /// Unlike `new`, this version does NOT catch panics.
+    pub fn new_aborting<F>(t: &'a mut F) -> ClosureBorrow<'a, T>
     where
         F: UnsizeClosureRef<'a, T> + ?Sized,
-    {
-        let t: &mut T = t.unsize_closure_ref();
-        let (ptr, len): (u32, u32) = unsafe { mem::transmute_copy(&t) };
-        let closure = Closure {
-            js: crate::__rt::wbg_cast(BorrowedClosure::<T> {
-                data: WasmSlice { ptr, len },
                 unwind_safe: false,
                 _marker: PhantomData::<T>,
             }),
             borrowed: true,
-            _marker: PhantomData::<Box<T>>,
         };
         ClosureBorrow {
             closure: mem::ManuallyDrop::new(closure),
             _lifetime: PhantomData,
         }
+    }
+
+    /// Executes a callback with a borrowed closure, guaranteeing the closure
+    /// is dropped before the borrowed data's lifetime ends.
+    ///
+    /// This is the safest way to use `ClosureBorrow` as it ensures proper
+    /// cleanup ordering.
+    ///
+    /// # Example
+    /// ```ignore
+    /// let mut func = || { println!("hello"); };
+    /// ClosureBorrow::with(&mut func, |closure| {
+    ///     js_function_that_calls_closure(closure);
+    /// });
+        f(&borrow.closure)
+        // borrow is dropped here, before 'a ends
+    }
+
+    /// Like `with`, but creates a non-unwinding closure.
+    pub fn with_aborting<F, R>(t: &'a mut F, f: impl FnOnce(&Closure<T>) -> R) -> R
+    where
+        F: UnsizeClosureRef<'a, T> + ?Sized,
+    {
+        let borrow = Self::new_aborting(t);
+        f(&borrow.closure)
     }
 }
 
@@ -329,7 +355,6 @@ where
     ///   `Closure::once` and `Closure::once_into_js`).
     ///
     /// * It must be `'static`, aka no stack references (use the `move`
-    ///   keyword).
     ///
     /// * It can have at most 7 arguments.
     ///
@@ -702,14 +727,11 @@ where
 {
     type Abi = WasmSlice;
     fn into_abi(self) -> WasmSlice {
-        let WasmSlice {ptr, mut len} = self.data;
+        let WasmSlice { ptr, mut len } = self.data;
         if self.unwind_safe {
             len |= 0x80000000;
         }
-        WasmSlice {
-            ptr,
-            len,
-        }
+        WasmSlice { ptr, len }
     }
 }
 
