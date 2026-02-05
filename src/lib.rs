@@ -1238,7 +1238,6 @@ extern "C" {
     fn __wbindgen_bigint_get_as_i64(js: &JsValue) -> Option<i64>;
 
     fn __wbindgen_debug_string(js: &JsValue) -> String;
-    fn __wbindgen_log(js: &JsValue);
 
     fn __wbindgen_throw(msg: &str) /* -> ! */;
     fn __wbindgen_rethrow(js: JsValue) /* -> ! */;
@@ -1415,10 +1414,6 @@ pub fn throw(s: &str) -> ! {
 pub fn throw_str(s: &str) -> ! {
     __wbindgen_throw(s);
     unsafe { core::hint::unreachable_unchecked() }
-}
-
-pub fn log(x: &JsValue) {
-    __wbindgen_log(x);
 }
 
 /// Rethrow a JS exception

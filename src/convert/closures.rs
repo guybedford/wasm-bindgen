@@ -11,13 +11,11 @@ use crate::convert::slices::WasmSlice;
 use crate::convert::RefFromWasmAbi;
 use crate::convert::{FromWasmAbi, IntoWasmAbi, ReturnWasmAbi, WasmAbi, WasmRet};
 use crate::describe::{inform, WasmDescribe, FUNCTION};
-use crate::log;
 use crate::throw_str;
 use crate::JsValue;
 use crate::UnwrapThrowExt;
 #[cfg(all(feature = "std", target_arch = "wasm32", panic = "unwind"))]
 use core::panic::AssertUnwindSafe;
-use std::format;
 
 macro_rules! closures {
     // Unwind safe passing
@@ -85,7 +83,6 @@ macro_rules! closures {
             }
             let unwind_safe = (b & 0x80000000) != 0;
             let b = b & 0x7FFFFFFF;
-            log(&JsValue::from_str(&format!("unwind_safe {unwind_safe}, b {b}")));
             let ret = {
                 let f: & $($mut)? dyn $Fn $FnArgs -> R = mem::transmute((a, b));
                 $(

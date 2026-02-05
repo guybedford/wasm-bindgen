@@ -1,5 +1,3 @@
-#[cfg(target_arch = "wasm32")]
-use crate::__wbindgen_throw;
 use crate::convert::{FromWasmAbi, IntoWasmAbi, WasmAbi, WasmRet};
 use crate::describe::inform;
 use crate::JsValue;

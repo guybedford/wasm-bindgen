@@ -6,16 +6,12 @@
 
 #![allow(clippy::fn_to_numeric_cast)]
 
-use crate::__rt;
 use crate::convert::*;
 use crate::describe::*;
 use crate::JsValue;
 use crate::__rt::marker::MaybeUnwindSafe;
-use crate::log;
 use alloc::boxed::Box;
 use alloc::string::String;
-use core::borrow::Borrow;
-use core::cell::RefCell;
 use core::fmt;
 use core::marker::PhantomData;
 use core::mem;

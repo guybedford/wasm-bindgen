@@ -845,20 +845,5 @@ fn closure_with_use_after_free_throws() {
     // After `with` returns, the closure has been invalidated.
     // Calling it should throw an error.
     let result = closure_with_call_cached();
-    let err = result.expect_err("calling closure after Closure::with should throw");
-    // Print the error for debugging
-    wasm_bindgen::log(&format!("Error debug: {:?}", err).into());
-    wasm_bindgen::log(
-        &format!(
-            "Error type: {}",
-            err.js_typeof().as_string().unwrap_or_default()
-        )
-        .into(),
-    );
-    if let Some(s) = err.as_string() {
-        wasm_bindgen::log(&format!("Error as_string: {}", s).into());
-    }
-    if let Some(e) = err.dyn_ref::<js_sys::Error>() {
-        wasm_bindgen::log(&format!("Error message: {}", e.message()).into());
-    }
+    let _ = result.expect_err("calling closure after Closure::with should throw");
 }

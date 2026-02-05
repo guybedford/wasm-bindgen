@@ -810,20 +810,8 @@ impl<F: Future<Output = Result<(), JsValue>>> Future for TestFuture<F> {
         // move `test` so this should be safe
         let test = unsafe { Pin::map_unchecked_mut(self, |me| &mut me.test) };
         let mut future_output = None;
-        let func = Box::leak(Box::new(|| {
-            wasm_bindgen::log(&JsValue::from_str("closure 1"));
-        }));
-        wasm_bindgen::log(&JsValue::from_str("invoke 1"));
-        __wbg_test_invoke(&Closure::new(func));
-        let mut func = || {
-            wasm_bindgen::log(&JsValue::from_str("closure 2"));
-        };
-        wasm_bindgen::log(&JsValue::from_str("invoke 2"));
-        // Closure::with erases the lifetime, so we can pass directly to __wbg_test_invoke
-        Closure::with(&mut func, |closure| __wbg_test_invoke(closure));
         let result = CURRENT_OUTPUT.set(&output, || {
             let mut test = Some(test);
-            wasm_bindgen::log(&JsValue::from_str("invoke 3"));
             let mut func = || {
                 let test = test.take().unwrap_throw();
                 future_output = Some(test.poll(cx))
