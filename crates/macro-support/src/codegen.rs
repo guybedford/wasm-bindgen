@@ -1521,7 +1521,6 @@ impl TryToTokens for ast::ImportFunction {
                         #(#arg_conversions)*
                         #import_name(#(#abi_argument_names),*)
                     };
-                    #wasm_bindgen::__rt::check_abort_flag();
                     #exceptional_ret
                     #convert_ret
                 }

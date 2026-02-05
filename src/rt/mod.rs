@@ -27,30 +27,6 @@ pub mod marker;
 
 pub use wasm_bindgen_macro::BindgenedStruct;
 
-/// This flag is set by the runtime to indicate a critical error has happened
-/// *somewhere*. If this flag is nonzero and we are not already panicking, we
-/// should start. This flag is checked at the FFI boundary.
-pub static ABORT_FLAG: core::sync::atomic::AtomicU32 = core::sync::atomic::AtomicU32::new(0);
-
-/// Check if the abort flag is set and panic if so.
-/// This is called before every JS import to ensure we don't continue
-/// execution after a critical error has been signaled.
-#[inline]
-pub fn check_abort_flag() {
-    if ABORT_FLAG.load(core::sync::atomic::Ordering::Relaxed) != 0 {
-        // Once core::intrinsics:abort() is stabilized, use that here instead
-        #[cfg(target_arch = "wasm32")]
-        {
-            __wbindgen_throw("Attempted to re-enter previously aborted Wasm instance");
-            unsafe { core::hint::unreachable_unchecked() }
-        }
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            panic!("Attempted to re-enter previously aborted Wasm instance");
-        }
-    }
-}
-
 /// Wrapper implementation for JsValue errors, with atomics and std handling
 pub fn js_panic(err: JsValue) {
     #[cfg(all(feature = "std", not(target_feature = "atomics")))]
