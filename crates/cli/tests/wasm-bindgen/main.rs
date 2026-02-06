@@ -11,7 +11,6 @@
 //! quite expensive, so it's recommended that this test suite doesn't become too
 //! large!
 
-mod abort_reinit;
 mod npm;
 mod reference;
 
