@@ -1,5 +1,3 @@
-use std::borrow::Cow;
-
 use crate::util::{ident_ty, leading_colon_path_ty, raw_ident, rust_ident};
 use proc_macro2::{Ident, Span};
 use syn::parse_quote;
@@ -1406,14 +1404,6 @@ impl<'a> WbgType<'a> {
                 }
             }
             wbg_type => vec![wbg_type.clone()],
-        }
-    }
-
-    pub(crate) fn orig(&self) -> Cow<'_, Self> {
-        if let Self::Identifier { name, .. } = self {
-            Cow::Owned(Self::UnknownIdentifier(name))
-        } else {
-            Cow::Borrowed(self)
         }
     }
 }

@@ -62,6 +62,17 @@ extern "C" {
     #[doc = ""]
     #[doc = "*This API requires the following crate features to be activated: `FileSystemEntry`*"]
     pub fn get_parent_with_callback(this: &FileSystemEntry, success_callback: &::js_sys::Function);
+    #[cfg(feature = "FileSystemEntryCallback")]
+    # [wasm_bindgen (method , structural , js_class = "FileSystemEntry" , js_name = getParent)]
+    #[doc = "The `getParent()` method."]
+    #[doc = ""]
+    #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/FileSystemEntry/getParent)"]
+    #[doc = ""]
+    #[doc = "*This API requires the following crate features to be activated: `FileSystemEntry`, `FileSystemEntryCallback`*"]
+    pub fn get_parent_with_file_system_entry_callback(
+        this: &FileSystemEntry,
+        success_callback: &FileSystemEntryCallback,
+    );
     # [wasm_bindgen (method , structural , js_class = "FileSystemEntry" , js_name = getParent)]
     #[doc = "The `getParent()` method."]
     #[doc = ""]
@@ -72,5 +83,41 @@ extern "C" {
         this: &FileSystemEntry,
         success_callback: &::js_sys::Function,
         error_callback: &::js_sys::Function,
+    );
+    #[cfg(feature = "FileSystemEntryCallback")]
+    # [wasm_bindgen (method , structural , js_class = "FileSystemEntry" , js_name = getParent)]
+    #[doc = "The `getParent()` method."]
+    #[doc = ""]
+    #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/FileSystemEntry/getParent)"]
+    #[doc = ""]
+    #[doc = "*This API requires the following crate features to be activated: `FileSystemEntry`, `FileSystemEntryCallback`*"]
+    pub fn get_parent_with_file_system_entry_callback_and_callback(
+        this: &FileSystemEntry,
+        success_callback: &FileSystemEntryCallback,
+        error_callback: &::js_sys::Function,
+    );
+    #[cfg(feature = "ErrorCallback")]
+    # [wasm_bindgen (method , structural , js_class = "FileSystemEntry" , js_name = getParent)]
+    #[doc = "The `getParent()` method."]
+    #[doc = ""]
+    #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/FileSystemEntry/getParent)"]
+    #[doc = ""]
+    #[doc = "*This API requires the following crate features to be activated: `ErrorCallback`, `FileSystemEntry`*"]
+    pub fn get_parent_with_callback_and_error_callback(
+        this: &FileSystemEntry,
+        success_callback: &::js_sys::Function,
+        error_callback: &ErrorCallback,
+    );
+    #[cfg(all(feature = "ErrorCallback", feature = "FileSystemEntryCallback",))]
+    # [wasm_bindgen (method , structural , js_class = "FileSystemEntry" , js_name = getParent)]
+    #[doc = "The `getParent()` method."]
+    #[doc = ""]
+    #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/FileSystemEntry/getParent)"]
+    #[doc = ""]
+    #[doc = "*This API requires the following crate features to be activated: `ErrorCallback`, `FileSystemEntry`, `FileSystemEntryCallback`*"]
+    pub fn get_parent_with_file_system_entry_callback_and_error_callback(
+        this: &FileSystemEntry,
+        success_callback: &FileSystemEntryCallback,
+        error_callback: &ErrorCallback,
     );
 }

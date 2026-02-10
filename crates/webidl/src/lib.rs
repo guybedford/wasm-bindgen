@@ -278,7 +278,7 @@ impl<'src> FirstPassRecord<'src> {
 
         let features_doc = if self.options.features {
             format!(
-                "\n\n*This API requires the following crate features to be activated: `{js_name}`*",
+                "\n\n*This API requires the following crate features to be activated: `{name}`*",
             )
         } else {
             String::new()
@@ -356,7 +356,6 @@ impl<'src> FirstPassRecord<'src> {
             }
         };
         tokens.to_tokens(&mut program.tokens);
-        program.required_features.insert(js_name.to_string());
     }
 
     fn append_enum(
@@ -1026,8 +1025,8 @@ impl<'src> FirstPassRecord<'src> {
                     && old_method
                         .arguments
                         .iter()
-                        .map(|(_, wbg_ty)| wbg_ty.orig())
-                        .eq(method.arguments.iter().map(|(_, wbg_ty)| wbg_ty.orig()))
+                        .map(|(_, wbg_ty)| wbg_ty)
+                        .eq(method.arguments.iter().map(|(_, wbg_ty)| wbg_ty))
                     // Allow if one is stable and one is unstable with different return types
                     && (old_method.unstable == method.unstable || old_method.ret_wbg_ty == method.ret_wbg_ty)
             });
