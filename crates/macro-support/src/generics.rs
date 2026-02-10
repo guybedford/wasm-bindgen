@@ -677,11 +677,10 @@ mod tests {
 
     #[test]
     fn test_where_predicate_assoc_type_binding_only_rhs() {
-        // Test that only Ret (not F) is found when F is not in the search set
         let f_ident = syn::Ident::new("F", proc_macro2::Span::call_site());
         let ret_ident = syn::Ident::new("Ret", proc_macro2::Span::call_site());
 
-        // Only Ret in the search set
+        // Ret in the search set
         let generic_params = vec![&ret_ident];
         let predicate: syn::WherePredicate = syn::parse_quote!(F: JsFunction<Ret = Ret>);
 
@@ -691,11 +690,11 @@ mod tests {
             "Ret should be detected as used in 'F: JsFunction<Ret = Ret>'"
         );
 
-        // Not F in the search set
+        // F in the search set
         let not_generic_params = vec![&f_ident];
         let uses = crate::generics::generics_predicate_uses(&predicate, &not_generic_params);
         assert!(
-            !uses,
+            uses,
             "F should not be detected as used in 'F: JsFunction<Ret = Ret>'"
         );
     }

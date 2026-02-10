@@ -168,41 +168,6 @@ help: consider further restricting type parameter `__UpcastTarget0` with trait `
 28 | #[wasm_bindgen], __UpcastTarget0: std::clone::Clone
    |                ++++++++++++++++++++++++++++++++++++
 
-error[E0277]: `*mut u8` cannot be sent between threads safely
-  --> ui-tests/generics-comprehensive.rs:34:57
-   |
-34 |     pub type TypeMultipleWhere<T, U> where T: Clone, U: Send;
-   |                                                         ^^^^ `*mut u8` cannot be sent between threads safely
-   |
-   = help: within `wasm_bindgen::JsValue`, the trait `Send` is not implemented for `*mut u8`
-note: required because it appears within the type `PhantomData<*mut u8>`
-  --> $RUST/core/src/marker.rs
-note: required because it appears within the type `wasm_bindgen::JsValue`
-  --> $WORKSPACE/src/lib.rs
-   |
-   | pub struct JsValue {
-   |            ^^^^^^^
-
-error[E0277]: `*mut u8` cannot be sent between threads safely
-  --> ui-tests/generics-comprehensive.rs:34:14
-   |
-34 |     pub type TypeMultipleWhere<T, U> where T: Clone, U: Send;
-   |              ^^^^^^^^^^^^^^^^^ `*mut u8` cannot be sent between threads safely
-   |
-   = help: within `wasm_bindgen::JsValue`, the trait `Send` is not implemented for `*mut u8`
-note: required because it appears within the type `PhantomData<*mut u8>`
-  --> $RUST/core/src/marker.rs
-note: required because it appears within the type `wasm_bindgen::JsValue`
-  --> $WORKSPACE/src/lib.rs
-   |
-   | pub struct JsValue {
-   |            ^^^^^^^
-note: required by a bound in `TypeMultipleWhere`
-  --> ui-tests/generics-comprehensive.rs:34:57
-   |
-34 |     pub type TypeMultipleWhere<T, U> where T: Clone, U: Send;
-   |                                                         ^^^^ required by this bound in `TypeMultipleWhere`
-
 error[E0277]: the trait bound `__UpcastTarget0: Clone` is not satisfied
   --> ui-tests/generics-comprehensive.rs:28:1
    |
@@ -387,27 +352,6 @@ help: consider further restricting type parameter `__UpcastTarget0` with trait `
    |
 28 | #[wasm_bindgen], __UpcastTarget0: for<'a> Fn(&'a str)
    |                ++++++++++++++++++++++++++++++++++++++
-
-error[E0277]: `*mut u8` cannot be sent between threads safely
-  --> ui-tests/generics-comprehensive.rs:28:1
-   |
-28 | #[wasm_bindgen]
-   | ^^^^^^^^^^^^^^^ `*mut u8` cannot be sent between threads safely
-   |
-   = help: within `wasm_bindgen::JsValue`, the trait `Send` is not implemented for `*mut u8`
-note: required because it appears within the type `PhantomData<*mut u8>`
-  --> $RUST/core/src/marker.rs
-note: required because it appears within the type `wasm_bindgen::JsValue`
-  --> $WORKSPACE/src/lib.rs
-   |
-   | pub struct JsValue {
-   |            ^^^^^^^
-note: required by a bound in `TypeMultipleWhere`
-  --> ui-tests/generics-comprehensive.rs:34:57
-   |
-34 |     pub type TypeMultipleWhere<T, U> where T: Clone, U: Send;
-   |                                                         ^^^^ required by this bound in `TypeMultipleWhere`
-   = note: this error originates in the attribute macro `wasm_bindgen` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: `wasm_bindgen::JsValue` is not an iterator
   --> ui-tests/generics-comprehensive.rs:28:1

@@ -103,6 +103,7 @@ impl<'src> FirstPassRecord<'src> {
                 catch: false,
                 variadic: false,
                 unstable: stability.is_unstable(),
+                has_unstable_override: false,
             },
         );
     }

@@ -1026,10 +1026,10 @@ impl<'src> FirstPassRecord<'src> {
                     && old_method
                         .arguments
                         .iter()
-                        .map(|(idl, wb)| (idl.orig(), wb))
-                        .eq(method.arguments.iter().map(|(idl, wb)| (idl.orig(), wb)))
+                        .map(|(_, wbg_ty)| wbg_ty.orig())
+                        .eq(method.arguments.iter().map(|(_, wbg_ty)| wbg_ty.orig()))
                     // Allow if one is stable and one is unstable with different return types
-                    && (old_method.unstable == method.unstable || old_method.ret_ty == method.ret_ty)
+                    && (old_method.unstable == method.unstable || old_method.ret_wbg_ty == method.ret_wbg_ty)
             });
             if !dominated {
                 methods.push(method);

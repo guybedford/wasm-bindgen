@@ -74,16 +74,17 @@ extern "C" {
     #[doc = "[described in the `wasm-bindgen` guide](https://wasm-bindgen.github.io/wasm-bindgen/web-sys/unstable-apis.html)*"]
     pub fn set_type(this: &Highlight, value: HighlightType);
     #[cfg(web_sys_unstable_apis)]
-    #[wasm_bindgen(catch, constructor, js_class = "Highlight")]
+    #[cfg(feature = "AbstractRange")]
+    #[wasm_bindgen(catch, constructor, variadic, js_class = "Highlight")]
     #[doc = "The `new Highlight(..)` constructor, creating a new instance of `Highlight`."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/Highlight/Highlight)"]
     #[doc = ""]
-    #[doc = "*This API requires the following crate features to be activated: `Highlight`*"]
+    #[doc = "*This API requires the following crate features to be activated: `AbstractRange`, `Highlight`*"]
     #[doc = ""]
     #[doc = "*This API is unstable and requires `--cfg=web_sys_unstable_apis` to be activated, as"]
     #[doc = "[described in the `wasm-bindgen` guide](https://wasm-bindgen.github.io/wasm-bindgen/web-sys/unstable-apis.html)*"]
-    pub fn new() -> Result<Highlight, JsValue>;
+    pub fn new(initial_ranges: &::js_sys::Array) -> Result<Highlight, JsValue>;
     #[cfg(web_sys_unstable_apis)]
     #[wasm_bindgen(catch, constructor, js_class = "Highlight")]
     #[doc = "The `new Highlight(..)` constructor, creating a new instance of `Highlight`."]
@@ -94,9 +95,136 @@ extern "C" {
     #[doc = ""]
     #[doc = "*This API is unstable and requires `--cfg=web_sys_unstable_apis` to be activated, as"]
     #[doc = "[described in the `wasm-bindgen` guide](https://wasm-bindgen.github.io/wasm-bindgen/web-sys/unstable-apis.html)*"]
-    pub fn new_with_initial_ranges(
-        initial_ranges: &::wasm_bindgen::JsValue,
+    pub fn new_0() -> Result<Highlight, JsValue>;
+    #[cfg(web_sys_unstable_apis)]
+    #[cfg(feature = "AbstractRange")]
+    #[wasm_bindgen(catch, constructor, js_class = "Highlight")]
+    #[doc = "The `new Highlight(..)` constructor, creating a new instance of `Highlight`."]
+    #[doc = ""]
+    #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/Highlight/Highlight)"]
+    #[doc = ""]
+    #[doc = "*This API requires the following crate features to be activated: `AbstractRange`, `Highlight`*"]
+    #[doc = ""]
+    #[doc = "*This API is unstable and requires `--cfg=web_sys_unstable_apis` to be activated, as"]
+    #[doc = "[described in the `wasm-bindgen` guide](https://wasm-bindgen.github.io/wasm-bindgen/web-sys/unstable-apis.html)*"]
+    pub fn new_1(initial_ranges_1: &AbstractRange) -> Result<Highlight, JsValue>;
+    #[cfg(web_sys_unstable_apis)]
+    #[cfg(feature = "AbstractRange")]
+    #[wasm_bindgen(catch, constructor, js_class = "Highlight")]
+    #[doc = "The `new Highlight(..)` constructor, creating a new instance of `Highlight`."]
+    #[doc = ""]
+    #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/Highlight/Highlight)"]
+    #[doc = ""]
+    #[doc = "*This API requires the following crate features to be activated: `AbstractRange`, `Highlight`*"]
+    #[doc = ""]
+    #[doc = "*This API is unstable and requires `--cfg=web_sys_unstable_apis` to be activated, as"]
+    #[doc = "[described in the `wasm-bindgen` guide](https://wasm-bindgen.github.io/wasm-bindgen/web-sys/unstable-apis.html)*"]
+    pub fn new_2(
+        initial_ranges_1: &AbstractRange,
+        initial_ranges_2: &AbstractRange,
     ) -> Result<Highlight, JsValue>;
+    #[cfg(web_sys_unstable_apis)]
+    #[cfg(feature = "AbstractRange")]
+    #[wasm_bindgen(catch, constructor, js_class = "Highlight")]
+    #[doc = "The `new Highlight(..)` constructor, creating a new instance of `Highlight`."]
+    #[doc = ""]
+    #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/Highlight/Highlight)"]
+    #[doc = ""]
+    #[doc = "*This API requires the following crate features to be activated: `AbstractRange`, `Highlight`*"]
+    #[doc = ""]
+    #[doc = "*This API is unstable and requires `--cfg=web_sys_unstable_apis` to be activated, as"]
+    #[doc = "[described in the `wasm-bindgen` guide](https://wasm-bindgen.github.io/wasm-bindgen/web-sys/unstable-apis.html)*"]
+    pub fn new_3(
+        initial_ranges_1: &AbstractRange,
+        initial_ranges_2: &AbstractRange,
+        initial_ranges_3: &AbstractRange,
+    ) -> Result<Highlight, JsValue>;
+    #[cfg(web_sys_unstable_apis)]
+    #[cfg(feature = "AbstractRange")]
+    #[wasm_bindgen(catch, constructor, js_class = "Highlight")]
+    #[doc = "The `new Highlight(..)` constructor, creating a new instance of `Highlight`."]
+    #[doc = ""]
+    #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/Highlight/Highlight)"]
+    #[doc = ""]
+    #[doc = "*This API requires the following crate features to be activated: `AbstractRange`, `Highlight`*"]
+    #[doc = ""]
+    #[doc = "*This API is unstable and requires `--cfg=web_sys_unstable_apis` to be activated, as"]
+    #[doc = "[described in the `wasm-bindgen` guide](https://wasm-bindgen.github.io/wasm-bindgen/web-sys/unstable-apis.html)*"]
+    pub fn new_4(
+        initial_ranges_1: &AbstractRange,
+        initial_ranges_2: &AbstractRange,
+        initial_ranges_3: &AbstractRange,
+        initial_ranges_4: &AbstractRange,
+    ) -> Result<Highlight, JsValue>;
+    #[cfg(web_sys_unstable_apis)]
+    #[cfg(feature = "AbstractRange")]
+    #[wasm_bindgen(catch, constructor, js_class = "Highlight")]
+    #[doc = "The `new Highlight(..)` constructor, creating a new instance of `Highlight`."]
+    #[doc = ""]
+    #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/Highlight/Highlight)"]
+    #[doc = ""]
+    #[doc = "*This API requires the following crate features to be activated: `AbstractRange`, `Highlight`*"]
+    #[doc = ""]
+    #[doc = "*This API is unstable and requires `--cfg=web_sys_unstable_apis` to be activated, as"]
+    #[doc = "[described in the `wasm-bindgen` guide](https://wasm-bindgen.github.io/wasm-bindgen/web-sys/unstable-apis.html)*"]
+    pub fn new_5(
+        initial_ranges_1: &AbstractRange,
+        initial_ranges_2: &AbstractRange,
+        initial_ranges_3: &AbstractRange,
+        initial_ranges_4: &AbstractRange,
+        initial_ranges_5: &AbstractRange,
+    ) -> Result<Highlight, JsValue>;
+    #[cfg(web_sys_unstable_apis)]
+    #[cfg(feature = "AbstractRange")]
+    #[wasm_bindgen(catch, constructor, js_class = "Highlight")]
+    #[doc = "The `new Highlight(..)` constructor, creating a new instance of `Highlight`."]
+    #[doc = ""]
+    #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/Highlight/Highlight)"]
+    #[doc = ""]
+    #[doc = "*This API requires the following crate features to be activated: `AbstractRange`, `Highlight`*"]
+    #[doc = ""]
+    #[doc = "*This API is unstable and requires `--cfg=web_sys_unstable_apis` to be activated, as"]
+    #[doc = "[described in the `wasm-bindgen` guide](https://wasm-bindgen.github.io/wasm-bindgen/web-sys/unstable-apis.html)*"]
+    pub fn new_6(
+        initial_ranges_1: &AbstractRange,
+        initial_ranges_2: &AbstractRange,
+        initial_ranges_3: &AbstractRange,
+        initial_ranges_4: &AbstractRange,
+        initial_ranges_5: &AbstractRange,
+        initial_ranges_6: &AbstractRange,
+    ) -> Result<Highlight, JsValue>;
+    #[cfg(web_sys_unstable_apis)]
+    #[cfg(feature = "AbstractRange")]
+    #[wasm_bindgen(catch, constructor, js_class = "Highlight")]
+    #[doc = "The `new Highlight(..)` constructor, creating a new instance of `Highlight`."]
+    #[doc = ""]
+    #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/Highlight/Highlight)"]
+    #[doc = ""]
+    #[doc = "*This API requires the following crate features to be activated: `AbstractRange`, `Highlight`*"]
+    #[doc = ""]
+    #[doc = "*This API is unstable and requires `--cfg=web_sys_unstable_apis` to be activated, as"]
+    #[doc = "[described in the `wasm-bindgen` guide](https://wasm-bindgen.github.io/wasm-bindgen/web-sys/unstable-apis.html)*"]
+    pub fn new_7(
+        initial_ranges_1: &AbstractRange,
+        initial_ranges_2: &AbstractRange,
+        initial_ranges_3: &AbstractRange,
+        initial_ranges_4: &AbstractRange,
+        initial_ranges_5: &AbstractRange,
+        initial_ranges_6: &AbstractRange,
+        initial_ranges_7: &AbstractRange,
+    ) -> Result<Highlight, JsValue>;
+    #[cfg(web_sys_unstable_apis)]
+    #[cfg(feature = "AbstractRange")]
+    # [wasm_bindgen (method , structural , js_class = "Highlight" , js_name = add)]
+    #[doc = "The `add()` method."]
+    #[doc = ""]
+    #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/Highlight/add)"]
+    #[doc = ""]
+    #[doc = "*This API requires the following crate features to be activated: `AbstractRange`, `Highlight`*"]
+    #[doc = ""]
+    #[doc = "*This API is unstable and requires `--cfg=web_sys_unstable_apis` to be activated, as"]
+    #[doc = "[described in the `wasm-bindgen` guide](https://wasm-bindgen.github.io/wasm-bindgen/web-sys/unstable-apis.html)*"]
+    pub fn add(this: &Highlight, value: &AbstractRange) -> Highlight;
     #[cfg(web_sys_unstable_apis)]
     # [wasm_bindgen (method , structural , js_class = "Highlight" , js_name = clear)]
     #[doc = "The `clear()` method."]
@@ -109,6 +237,18 @@ extern "C" {
     #[doc = "[described in the `wasm-bindgen` guide](https://wasm-bindgen.github.io/wasm-bindgen/web-sys/unstable-apis.html)*"]
     pub fn clear(this: &Highlight);
     #[cfg(web_sys_unstable_apis)]
+    #[cfg(feature = "AbstractRange")]
+    # [wasm_bindgen (method , structural , js_class = "Highlight" , js_name = delete)]
+    #[doc = "The `delete()` method."]
+    #[doc = ""]
+    #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/Highlight/delete)"]
+    #[doc = ""]
+    #[doc = "*This API requires the following crate features to be activated: `AbstractRange`, `Highlight`*"]
+    #[doc = ""]
+    #[doc = "*This API is unstable and requires `--cfg=web_sys_unstable_apis` to be activated, as"]
+    #[doc = "[described in the `wasm-bindgen` guide](https://wasm-bindgen.github.io/wasm-bindgen/web-sys/unstable-apis.html)*"]
+    pub fn delete(this: &Highlight, value: &AbstractRange) -> bool;
+    #[cfg(web_sys_unstable_apis)]
     # [wasm_bindgen (catch , method , structural , js_class = "Highlight" , js_name = forEach)]
     #[doc = "The `forEach()` method."]
     #[doc = ""]
@@ -119,6 +259,18 @@ extern "C" {
     #[doc = "*This API is unstable and requires `--cfg=web_sys_unstable_apis` to be activated, as"]
     #[doc = "[described in the `wasm-bindgen` guide](https://wasm-bindgen.github.io/wasm-bindgen/web-sys/unstable-apis.html)*"]
     pub fn for_each(this: &Highlight, callback: &::js_sys::Function) -> Result<(), JsValue>;
+    #[cfg(web_sys_unstable_apis)]
+    #[cfg(feature = "AbstractRange")]
+    # [wasm_bindgen (method , structural , js_class = "Highlight" , js_name = has)]
+    #[doc = "The `has()` method."]
+    #[doc = ""]
+    #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/Highlight/has)"]
+    #[doc = ""]
+    #[doc = "*This API requires the following crate features to be activated: `AbstractRange`, `Highlight`*"]
+    #[doc = ""]
+    #[doc = "*This API is unstable and requires `--cfg=web_sys_unstable_apis` to be activated, as"]
+    #[doc = "[described in the `wasm-bindgen` guide](https://wasm-bindgen.github.io/wasm-bindgen/web-sys/unstable-apis.html)*"]
+    pub fn has(this: &Highlight, value: &AbstractRange) -> bool;
     #[cfg(web_sys_unstable_apis)]
     # [wasm_bindgen (method , structural , js_class = "Highlight" , js_name = entries)]
     #[doc = "The `entries()` method."]

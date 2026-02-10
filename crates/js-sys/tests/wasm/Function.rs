@@ -3,6 +3,8 @@ use wasm_bindgen::convert::Upcast;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 #[cfg(js_sys_unstable_apis)]
+use wasm_bindgen::JsGeneric;
+#[cfg(js_sys_unstable_apis)]
 use wasm_bindgen::Nullable;
 use wasm_bindgen::Undefined;
 use wasm_bindgen_test::*;

@@ -927,8 +927,7 @@ where
     type Abi = WasmSlice;
 
     fn into_abi(self) -> WasmSlice {
-        let (a, b): (usize, usize) =
-            unsafe { mem::transmute_copy(&ManuallyDrop::new(self.closure)) };
+        let (a, b): (usize, usize) = unsafe { mem::transmute_copy(&ManuallyDrop::new(self.data)) };
         // Pack unwind_safe into most significant bit (bit 31) of vtable
         let b_with_flag = if self.unwind_safe {
             (b as u32) | 0x80000000
