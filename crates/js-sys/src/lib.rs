@@ -43,9 +43,9 @@ use core::mem::MaybeUninit;
 use core::ops::{Add, BitAnd, BitOr, BitXor, Div, Mul, Neg, Not, Rem, Shl, Shr, Sub};
 use core::str;
 use core::str::FromStr;
-use wasm_bindgen::convert::{FromWasmAbi, Upcast};
-
 pub use wasm_bindgen;
+use wasm_bindgen::closure::WasmClosure;
+use wasm_bindgen::convert::{FromWasmAbi, IntoWasmAbi, Upcast};
 use wasm_bindgen::{prelude::*, JsError, JsGeneric, Nullable, Promising, Undefined};
 
 // When adding new imports:
@@ -4640,7 +4640,7 @@ impl<T: JsFunction> Function<T> {
     }
 }
 
-// Comprehensive type-safe cross-function casting rules
+// Comprehensive type-safe cross-function covariant and contravariant casting rules
 macro_rules! impl_fn_upcasts {
     () => {
         impl_fn_upcasts!(@arities
@@ -4742,6 +4742,111 @@ macro_rules! impl_fn_upcasts {
 }
 
 impl_fn_upcasts!();
+
+#[doc(hidden)]
+/// Map closure types to their corresponding Function types
+/// matching the arity and converting () into None, while
+/// ensuring fully surjective type flow.
+///
+/// The benefit of surjective inferrence here is that:
+/// ```
+///    let func = Function::from_closure(closure);
+/// ```
+/// does not require re-typing the function, with information that was already
+/// available to the closure. The type returned can be called directly via:
+///
+/// ```
+///   func.call();
+/// ```
+///
+/// and argument type inference and arity will work directly provided the
+/// generic types are otherwise erasure-inhabitable.
+///
+/// We repeat what is in Closure here to achieve this because () is used for
+/// Closure, while None is used for Function. And the whole benefit of None
+/// is that it is a type that is disjoint permissing arity implementations
+/// alongside blanket ErasableGeneric implementations. If we migrate None into
+/// core, it would not support disjointness anymore since "upstream crates may
+/// add a new impl of trait ErasableGeneric for None in future versions".
+/// Thus, short of fully unifying js_sys and core, the only way to maintain
+/// None disjointness for blanket implementations requires the brief
+/// repetition of closure types here.
+// pub trait ClosureIntoFunction: WasmClosure {
+//     type FuncType;
+// }
+
+// pub trait FunctionIntoClosure<F> {
+//     type ClosureType: ?Sized + ClosureIntoFunction<FuncType = F>;
+// }
+
+// macro_rules! impl_closure_into_function {
+//     (@impl $Fn:ident ($($var:ident),*)) => {
+//         impl<$($var: FromWasmAbi,)* R: IntoWasmAbi> ClosureIntoFunction for dyn $Fn($($var),*) -> R + '_ {
+//             type FuncType = fn($($var),*) -> R;
+//         }
+
+//         impl<$($var: FromWasmAbi,)* R: IntoWasmAbi> FunctionIntoClosure<fn($($var),*) -> R> for dyn $Fn($($var),*) -> R + '_ {
+//             type ClosureType = dyn $Fn($($var),*) -> R;
+//         }
+//     };
+
+//     ($( ($($var:ident)*) )*) => {$(
+//         impl_closure_into_function!(@impl Fn ($($var),*));
+//         impl_closure_into_function!(@impl FnMut ($($var),*));
+//     )*};
+// }
+
+// impl_closure_into_function! {
+//     ()
+//     (A)
+//     (A B)
+//     (A B C)
+//     (A B C D)
+//     (A B C D E)
+//     (A B C D E F)
+//     (A B C D E F G)
+//     (A B C D E F G H)
+// }
+
+// impl Function {
+//     /// Convert a Rust closure into a typed JavaScript Function.
+//     ///
+//     /// Type parameters are inferred from the closure's signature.
+//     /// Unused argument slots become `None`.
+//     ///
+//     /// Use [`Function::from_closure_upcast`] instead if the Function
+//     /// type is known, to simultaneously perform a compile time
+//     /// type-safe upcast.
+//     ///
+//     /// **Note:** Rust closure types cannot be passed directly therefore
+//     /// the function will need to be explicitly upcast into a function
+//     /// on JS ABI types. For example a return value of `()` must be cast
+//     /// into `Undefined` to call the function from JS.
+//     ///
+//     /// _This function is marked as unstable until a solution to
+//     /// "canonical generic closure conversion" can be implemented._
+//     #[cfg(js_sys_unstable_apis)]
+//     pub fn from_closure<C: ClosureIntoFunction + ?Sized>(
+//         closure: Closure<C>,
+//     ) -> Function<<C as ClosureIntoFunction>::FuncType> {
+//         closure.into_js_value().unchecked_into()
+//     }
+
+//     /// Convert a Rust closure into a typed JavaScript Function.
+//     ///
+//     /// Performs a direct type-safe conversion and upcast of a closure
+//     /// into a corresponding typed JavaScript Function.
+//     pub fn from_closure_upcast<C, F>(
+//         closure: Closure<C>,
+//     ) -> Function<F>
+//     where
+//         C: ?Sized + ClosureIntoFunction,
+//         F: JsFunction,
+//         C: FunctionIntoClosure<F>,
+//     {
+//         closure.into_js_value().unchecked_into()
+//     }
+// }
 
 #[cfg(not(js_sys_unstable_apis))]
 impl Function {

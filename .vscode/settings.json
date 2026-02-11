@@ -4,6 +4,6 @@
     "panic=unwind"
   ],
   "rust-analyzer.cargo.extraEnv": {
-    "RUSTFLAGS": "--cfg=js_sys_unstable_apis"
+    // "RUSTFLAGS": "--cfg=js_sys_unstable_apis"
   }
 }
