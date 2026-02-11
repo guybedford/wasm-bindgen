@@ -8,7 +8,7 @@ use crate::__rt::marker::{ErasableGeneric, Promising};
 use crate::convert::traits::{WasmAbi, WasmPrimitive};
 use crate::convert::{
     FromWasmAbi, IntoWasmAbi, LongRefFromWasmAbi, OptionFromWasmAbi, OptionIntoWasmAbi,
-    RefFromWasmAbi, ReturnWasmAbi, TryFromJsValue, Upcast,
+    RefFromWasmAbi, ReturnWasmAbi, TryFromJsValue, UpcastFrom,
 };
 use crate::{
     Clamped, JsError, JsValue, Nullable, Undefined, UnwrapThrowExt, __wbindgen_object_is_undefined,
@@ -136,9 +136,9 @@ macro_rules! type_wasm_native {
             }
         }
 
-        impl Upcast<JsValue> for $t {}
-        impl Upcast<Nullable<JsValue>> for $t {}
-        impl Upcast<$t> for $t {}
+        impl UpcastFrom<$t> for JsValue {}
+        impl UpcastFrom<$t> for Nullable<JsValue> {}
+        impl UpcastFrom<$t> for $t {}
     )*)
 }
 
@@ -150,10 +150,10 @@ type_wasm_native!(
     f64 as f64
 );
 
-impl Upcast<u128> for u64 {}
-impl Upcast<Nullable<u128>> for u64 {}
-impl Upcast<i128> for i64 {}
-impl Upcast<Nullable<i128>> for i64 {}
+impl UpcastFrom<u64> for u128 {}
+impl UpcastFrom<u64> for Nullable<u128> {}
+impl UpcastFrom<i64> for i128 {}
+impl UpcastFrom<i64> for Nullable<i128> {}
 
 /// The sentinel value is 2^32 + 1 for 32-bit primitive types.
 ///
@@ -210,9 +210,9 @@ macro_rules! type_wasm_native_f64_option {
             }
         }
 
-        impl Upcast<JsValue> for $t {}
-        impl Upcast<Nullable<JsValue>> for $t {}
-        impl Upcast<$t> for $t {}
+        impl UpcastFrom<$t> for JsValue {}
+        impl UpcastFrom<$t> for Nullable<JsValue> {}
+        impl UpcastFrom<$t> for $t {}
     )*)
 }
 
@@ -225,40 +225,40 @@ type_wasm_native_f64_option!(
 );
 
 #[cfg(target_pointer_width = "32")]
-impl Upcast<i32> for isize {}
+impl UpcastFrom<isize> for i32 {}
 #[cfg(target_pointer_width = "32")]
-impl Upcast<Nullable<i32>> for isize {}
+impl UpcastFrom<isize> for Nullable<i32> {}
 
-impl Upcast<i64> for isize {}
-impl Upcast<Nullable<i64>> for isize {}
-impl Upcast<i128> for isize {}
-impl Upcast<Nullable<i128>> for isize {}
+impl UpcastFrom<isize> for i64 {}
+impl UpcastFrom<isize> for Nullable<i64> {}
+impl UpcastFrom<isize> for i128 {}
+impl UpcastFrom<isize> for Nullable<i128> {}
 
-impl Upcast<isize> for i32 {}
-impl Upcast<Nullable<isize>> for i32 {}
-impl Upcast<i64> for i32 {}
-impl Upcast<Nullable<i64>> for i32 {}
-impl Upcast<i128> for i32 {}
-impl Upcast<Nullable<i128>> for i32 {}
+impl UpcastFrom<i32> for isize {}
+impl UpcastFrom<i32> for Nullable<isize> {}
+impl UpcastFrom<i32> for i64 {}
+impl UpcastFrom<i32> for Nullable<i64> {}
+impl UpcastFrom<i32> for i128 {}
+impl UpcastFrom<i32> for Nullable<i128> {}
 
-impl Upcast<usize> for u32 {}
-impl Upcast<Nullable<usize>> for u32 {}
-impl Upcast<u64> for u32 {}
-impl Upcast<Nullable<u64>> for u32 {}
-impl Upcast<u128> for u32 {}
-impl Upcast<Nullable<u128>> for u32 {}
+impl UpcastFrom<u32> for usize {}
+impl UpcastFrom<u32> for Nullable<usize> {}
+impl UpcastFrom<u32> for u64 {}
+impl UpcastFrom<u32> for Nullable<u64> {}
+impl UpcastFrom<u32> for u128 {}
+impl UpcastFrom<u32> for Nullable<u128> {}
 
 #[cfg(target_pointer_width = "32")]
-impl Upcast<u32> for usize {}
+impl UpcastFrom<usize> for u32 {}
 #[cfg(target_pointer_width = "32")]
-impl Upcast<Nullable<u32>> for usize {}
-impl Upcast<u64> for usize {}
-impl Upcast<Nullable<u64>> for usize {}
-impl Upcast<u128> for usize {}
-impl Upcast<Nullable<u128>> for usize {}
+impl UpcastFrom<usize> for Nullable<u32> {}
+impl UpcastFrom<usize> for u64 {}
+impl UpcastFrom<usize> for Nullable<u64> {}
+impl UpcastFrom<usize> for u128 {}
+impl UpcastFrom<usize> for Nullable<u128> {}
 
-impl Upcast<f64> for f32 {}
-impl Upcast<Nullable<f64>> for f32 {}
+impl UpcastFrom<f32> for f64 {}
+impl UpcastFrom<f32> for Nullable<f64> {}
 
 /// The sentinel value is 0xFF_FFFF for primitives with less than 32 bits.
 ///
@@ -301,45 +301,45 @@ macro_rules! type_abi_as_u32 {
             type Resolution = $t;
         }
 
-        impl Upcast<JsValue> for $t {}
-        impl Upcast<Nullable<JsValue>> for $t {}
-        impl Upcast<$t> for $t {}
+        impl UpcastFrom<$t> for JsValue {}
+        impl UpcastFrom<$t> for Nullable<JsValue> {}
+        impl UpcastFrom<$t> for $t {}
     )*)
 }
 
 type_abi_as_u32!(i8 u8 i16 u16);
 
-impl Upcast<i16> for i8 {}
-impl Upcast<Nullable<i16>> for i8 {}
-impl Upcast<i32> for i8 {}
-impl Upcast<Nullable<i32>> for i8 {}
-impl Upcast<i64> for i8 {}
-impl Upcast<Nullable<i64>> for i8 {}
-impl Upcast<i128> for i8 {}
-impl Upcast<Nullable<i128>> for i8 {}
+impl UpcastFrom<i8> for i16 {}
+impl UpcastFrom<i8> for Nullable<i16> {}
+impl UpcastFrom<i8> for i32 {}
+impl UpcastFrom<i8> for Nullable<i32> {}
+impl UpcastFrom<i8> for i64 {}
+impl UpcastFrom<i8> for Nullable<i64> {}
+impl UpcastFrom<i8> for i128 {}
+impl UpcastFrom<i8> for Nullable<i128> {}
 
-impl Upcast<u16> for u8 {}
-impl Upcast<Nullable<u16>> for u8 {}
-impl Upcast<u32> for u8 {}
-impl Upcast<Nullable<u32>> for u8 {}
-impl Upcast<u64> for u8 {}
-impl Upcast<Nullable<u64>> for u8 {}
-impl Upcast<u128> for u8 {}
-impl Upcast<Nullable<u128>> for u8 {}
+impl UpcastFrom<u8> for u16 {}
+impl UpcastFrom<u8> for Nullable<u16> {}
+impl UpcastFrom<u8> for u32 {}
+impl UpcastFrom<u8> for Nullable<u32> {}
+impl UpcastFrom<u8> for u64 {}
+impl UpcastFrom<u8> for Nullable<u64> {}
+impl UpcastFrom<u8> for u128 {}
+impl UpcastFrom<u8> for Nullable<u128> {}
 
-impl Upcast<i32> for i16 {}
-impl Upcast<Nullable<i32>> for i16 {}
-impl Upcast<i64> for i16 {}
-impl Upcast<Nullable<i64>> for i16 {}
-impl Upcast<i128> for i16 {}
-impl Upcast<Nullable<i128>> for i16 {}
+impl UpcastFrom<i16> for i32 {}
+impl UpcastFrom<i16> for Nullable<i32> {}
+impl UpcastFrom<i16> for i64 {}
+impl UpcastFrom<i16> for Nullable<i64> {}
+impl UpcastFrom<i16> for i128 {}
+impl UpcastFrom<i16> for Nullable<i128> {}
 
-impl Upcast<u32> for u16 {}
-impl Upcast<Nullable<u32>> for u16 {}
-impl Upcast<u64> for u16 {}
-impl Upcast<Nullable<u64>> for u16 {}
-impl Upcast<u128> for u16 {}
-impl Upcast<Nullable<u128>> for u16 {}
+impl UpcastFrom<u16> for u32 {}
+impl UpcastFrom<u16> for Nullable<u32> {}
+impl UpcastFrom<u16> for u64 {}
+impl UpcastFrom<u16> for Nullable<u64> {}
+impl UpcastFrom<u16> for u128 {}
+impl UpcastFrom<u16> for Nullable<u128> {}
 
 impl IntoWasmAbi for bool {
     type Abi = u32;
@@ -381,9 +381,9 @@ impl Promising for bool {
     type Resolution = bool;
 }
 
-impl Upcast<JsValue> for bool {}
-impl Upcast<Nullable<JsValue>> for bool {}
-impl Upcast<bool> for bool {}
+impl UpcastFrom<bool> for JsValue {}
+impl UpcastFrom<bool> for Nullable<JsValue> {}
+impl UpcastFrom<bool> for bool {}
 
 impl IntoWasmAbi for char {
     type Abi = u32;
@@ -426,9 +426,9 @@ impl Promising for char {
     type Resolution = char;
 }
 
-impl Upcast<JsValue> for char {}
-impl Upcast<Nullable<JsValue>> for char {}
-impl Upcast<char> for char {}
+impl UpcastFrom<char> for JsValue {}
+impl UpcastFrom<char> for Nullable<JsValue> {}
+impl UpcastFrom<char> for char {}
 
 impl<T> IntoWasmAbi for *const T {
     type Abi = u32;
@@ -452,8 +452,8 @@ unsafe impl<T: ErasableGeneric> ErasableGeneric for *const T {
     type Repr = *const T::Repr;
 }
 
-impl<T, Target> Upcast<*const Target> for *const T where T: Upcast<Target> {}
-impl<T, Target> Upcast<Nullable<*const Target>> for *const T where T: Upcast<Target> {}
+impl<T, Target> UpcastFrom<*const T> for *const Target where Target: UpcastFrom<T> {}
+impl<T, Target> UpcastFrom<*const T> for Nullable<*const Target> where Target: UpcastFrom<T> {}
 
 impl<T> IntoWasmAbi for Option<*const T> {
     type Abi = f64;
@@ -469,8 +469,8 @@ unsafe impl<T: ErasableGeneric> ErasableGeneric for Option<T> {
     type Repr = Option<<T as ErasableGeneric>::Repr>;
 }
 
-impl<T, Target> Upcast<Option<Target>> for Option<T> where T: Upcast<Target> {}
-impl<T, Target> Upcast<Nullable<Option<Target>>> for Option<T> where T: Upcast<Target> {}
+impl<T, Target> UpcastFrom<Option<T>> for Option<Target> where Target: UpcastFrom<T> {}
+impl<T, Target> UpcastFrom<Option<T>> for Nullable<Option<Target>> where Target: UpcastFrom<T> {}
 
 impl<T> FromWasmAbi for Option<*const T> {
     type Abi = f64;
@@ -696,8 +696,8 @@ impl Promising for () {
     type Resolution = Undefined;
 }
 
-impl Upcast<JsValue> for () {}
-impl Upcast<()> for () {}
+impl UpcastFrom<()> for JsValue {}
+impl UpcastFrom<()> for () {}
 
 unsafe impl ErasableGeneric for () {
     type Repr = ();
@@ -763,16 +763,16 @@ impl<T: ErasableGeneric + Promising, E: ErasableGeneric> Promising for Result<T,
     type Resolution = Result<<T as Promising>::Resolution, E>;
 }
 
-impl<T, E, TargetT, TargetE> Upcast<Result<TargetT, TargetE>> for Result<T, E>
+impl<T, E, TargetT, TargetE> UpcastFrom<Result<T, E>> for Result<TargetT, TargetE>
 where
-    T: Upcast<TargetT>,
-    E: Upcast<TargetE>,
+    TargetT: UpcastFrom<T>,
+    TargetE: UpcastFrom<E>,
 {
 }
-impl<T, E, TargetT, TargetE> Upcast<Nullable<Result<TargetT, TargetE>>> for Result<T, E>
+impl<T, E, TargetT, TargetE> UpcastFrom<Result<T, E>> for Nullable<Result<TargetT, TargetE>>
 where
-    T: Upcast<TargetT>,
-    E: Upcast<TargetE>,
+    TargetT: UpcastFrom<T>,
+    TargetE: UpcastFrom<E>,
 {
 }
 
@@ -792,9 +792,9 @@ impl Promising for JsError {
     type Resolution = JsError;
 }
 
-impl Upcast<JsValue> for JsError {}
-impl Upcast<Nullable<JsValue>> for JsError {}
-impl Upcast<JsError> for JsError {}
+impl UpcastFrom<JsError> for JsValue {}
+impl UpcastFrom<JsError> for Nullable<JsValue> {}
+impl UpcastFrom<JsError> for JsError {}
 
 /// # ⚠️ Unstable
 ///

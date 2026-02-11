@@ -10,7 +10,7 @@ use crate::__wbindgen_copy_to_typed_array;
 use crate::convert::{
     js_value_vector_from_abi, js_value_vector_into_abi, FromWasmAbi, IntoWasmAbi,
     LongRefFromWasmAbi, OptionFromWasmAbi, OptionIntoWasmAbi, RefFromWasmAbi, RefMutFromWasmAbi,
-    Upcast, VectorFromWasmAbi, VectorIntoWasmAbi, WasmAbi,
+    UpcastFrom, VectorFromWasmAbi, VectorIntoWasmAbi, WasmAbi,
 };
 use crate::describe::*;
 use crate::{JsValue, Nullable};
@@ -406,18 +406,18 @@ unsafe impl<T: ErasableGeneric> ErasableGeneric for Box<[T]> {
     type Repr = Box<[T::Repr]>;
 }
 
-impl Upcast<&str> for &str {}
-impl Upcast<Nullable<&str>> for &str {}
+impl UpcastFrom<&str> for &str {}
+impl UpcastFrom<&str> for Nullable<&str> {}
 
-impl<T, Target> Upcast<Box<[Target]>> for Box<[T]> where T: Upcast<Target> {}
-impl<T, Target> Upcast<Nullable<Box<[Target]>>> for Box<[T]> where T: Upcast<Target> {}
+impl<T, Target> UpcastFrom<Box<[T]>> for Box<[Target]> where Target: UpcastFrom<T> {}
+impl<T, Target> UpcastFrom<Box<[T]>> for Nullable<Box<[Target]>> where Target: UpcastFrom<T> {}
 
 unsafe impl<T: ErasableGeneric> ErasableGeneric for Vec<T> {
     type Repr = Vec<T::Repr>;
 }
 
-impl<T, Target> Upcast<Vec<Target>> for Vec<T> where T: Upcast<Target> {}
-impl<T, Target> Upcast<Nullable<Vec<Target>>> for Vec<T> where T: Upcast<Target> {}
+impl<T, Target> UpcastFrom<Vec<T>> for Vec<Target> where Target: UpcastFrom<T> {}
+impl<T, Target> UpcastFrom<Vec<T>> for Nullable<Vec<Target>> where Target: UpcastFrom<T> {}
 
 impl<T: VectorIntoWasmAbi> IntoWasmAbi for Box<[T]> {
     type Abi = <T as VectorIntoWasmAbi>::Abi;
@@ -486,8 +486,8 @@ unsafe impl<'a, T: ErasableGeneric> ErasableGeneric for &'a [T] {
     type Repr = &'a [T::Repr];
 }
 
-impl<'a, T, Target> Upcast<&'a [Target]> for &'a [T] where T: Upcast<Target> {}
-impl<'a, T, Target> Upcast<Nullable<&'a [Target]>> for &'a [T] where T: Upcast<Target> {}
+impl<'a, T, Target> UpcastFrom<&'a [T]> for &'a [Target] where Target: UpcastFrom<T> {}
+impl<'a, T, Target> UpcastFrom<&'a [T]> for Nullable<&'a [Target]> where Target: UpcastFrom<T> {}
 
 impl<T: ErasableGeneric<Repr = JsValue> + WasmDescribe> IntoWasmAbi for &[T] {
     type Abi = WasmSlice;

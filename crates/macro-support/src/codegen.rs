@@ -1294,34 +1294,34 @@ impl TryToTokens for ast::ImportType {
             .to_tokens(tokens);
         }
 
-        // Generate Upcast implementations (unless no_upcast is set)
+        // Generate UpcastFrom implementations (unless no_upcast is set)
         if !self.no_upcast {
-            // 1. Always generate Upcast<JsValue>
+            // 1. Always generate UpcastFrom<Self> for JsValue
             (quote! {
                 #[automatically_derived]
-                impl #impl_generics #wasm_bindgen::convert::Upcast<#wasm_bindgen::JsValue>
-                    for #rust_name #ty_generics
+                impl #impl_generics #wasm_bindgen::convert::UpcastFrom<#rust_name #ty_generics>
+                    for #wasm_bindgen::JsValue
                 #where_clause
                 {
                 }
             })
             .to_tokens(tokens);
 
-            // 2. For non-generic types: generate identity upcast (Upcast<Self>, Upcast<Nullable<Self>>)
+            // 2. For non-generic types: generate identity upcast (UpcastFrom<Self> for Self, UpcastFrom<Self> for Nullable<Self>)
             // 3. For generic types: generate structural covariance
             let type_params: Vec<_> = self.generics.type_params().collect();
             if type_params.is_empty() {
                 // Identity impls for non-generic types
                 (quote! {
                     #[automatically_derived]
-                    impl #impl_generics #wasm_bindgen::convert::Upcast<#rust_name>
+                    impl #impl_generics #wasm_bindgen::convert::UpcastFrom<#rust_name>
                         for #rust_name
                     #where_clause
                     {
                     }
                     #[automatically_derived]
-                    impl #impl_generics #wasm_bindgen::convert::Upcast<#wasm_bindgen::Nullable<#rust_name>>
-                        for #rust_name
+                    impl #impl_generics #wasm_bindgen::convert::UpcastFrom<#rust_name>
+                        for #wasm_bindgen::Nullable<#rust_name>
                     #where_clause
                     {
                     }
@@ -1345,7 +1345,7 @@ impl TryToTokens for ast::ImportType {
                     })
                     .collect();
 
-                // Build where clause: T: Upcast<Target>
+                // Build where clause: Target: UpcastFrom<T>
                 let mut where_clause_extended =
                     self.generics
                         .where_clause
@@ -1358,23 +1358,23 @@ impl TryToTokens for ast::ImportType {
                 for (type_param, target_name) in type_params.iter().zip(&target_param_names) {
                     let param_ident = &type_param.ident;
                     where_clause_extended.predicates.push(syn::parse_quote!(
-                        #param_ident: #wasm_bindgen::convert::Upcast<#target_name>
+                        #target_name: #wasm_bindgen::convert::UpcastFrom<#param_ident>
                     ));
                 }
 
                 let (impl_generics_split, _, _) = impl_generics_extended.split_for_impl();
 
-                // Structural covariance - Type<T1, T2, ...> can widen to Type<Target0, Target1, ...>
+                // Structural covariance - Type<Target0, Target1, ...> can be upcast from Type<T1, T2, ...>
                 (quote! {
                     #[automatically_derived]
-                    impl #impl_generics_split #wasm_bindgen::convert::Upcast<#rust_name<#(#target_param_names),*>>
-                        for #rust_name #ty_generics
+                    impl #impl_generics_split #wasm_bindgen::convert::UpcastFrom<#rust_name #ty_generics>
+                        for #rust_name<#(#target_param_names),*>
                     #where_clause_extended
                     {
                     }
                     #[automatically_derived]
-                    impl #impl_generics_split #wasm_bindgen::convert::Upcast<#wasm_bindgen::Nullable<#rust_name<#(#target_param_names),*>>>
-                        for #rust_name #ty_generics
+                    impl #impl_generics_split #wasm_bindgen::convert::UpcastFrom<#rust_name #ty_generics>
+                        for #wasm_bindgen::Nullable<#rust_name<#(#target_param_names),*>>
                     #where_clause_extended
                     {
                     }
@@ -1382,18 +1382,18 @@ impl TryToTokens for ast::ImportType {
                 .to_tokens(tokens);
             }
 
-            // 4. For each superclass in extends, generate Upcast<superclass>
+            // 4. For each superclass in extends, generate UpcastFrom<Self> for superclass
             for superclass in self.extends.iter() {
                 (quote! {
                     #[automatically_derived]
-                    impl #impl_generics #wasm_bindgen::convert::Upcast<#superclass>
-                        for #rust_name #ty_generics
+                    impl #impl_generics #wasm_bindgen::convert::UpcastFrom<#rust_name #ty_generics>
+                        for #superclass
                     #where_clause
                     {
                     }
                     #[automatically_derived]
-                    impl #impl_generics #wasm_bindgen::convert::Upcast<#wasm_bindgen::Nullable<#superclass>>
-                        for #rust_name #ty_generics
+                    impl #impl_generics #wasm_bindgen::convert::UpcastFrom<#rust_name #ty_generics>
+                        for #wasm_bindgen::Nullable<#superclass>
                     #where_clause
                     {
                     }

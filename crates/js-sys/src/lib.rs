@@ -45,7 +45,7 @@ use core::str;
 use core::str::FromStr;
 pub use wasm_bindgen;
 use wasm_bindgen::closure::WasmClosure;
-use wasm_bindgen::convert::{FromWasmAbi, IntoWasmAbi, Upcast};
+use wasm_bindgen::convert::{FromWasmAbi, IntoWasmAbi, UpcastFrom};
 use wasm_bindgen::{prelude::*, JsError, JsGeneric, Nullable, Promising, Undefined};
 
 // When adding new imports:
@@ -1726,42 +1726,42 @@ impl_tuple!(8 [JsTuple1 JsTuple2 JsTuple3 JsTuple4 JsTuple5 JsTuple6 JsTuple7 Js
 macro_rules! impl_tuple_covariance {
     ([$($T:ident)+] [$($Target:ident)+] [$($Ts:ident)+]) => {
         // JsValue upcast
-        impl<$($T,)+> Upcast<JsValue> for ArrayTuple<($($T,)+)>
+        impl<$($T,)+> UpcastFrom<ArrayTuple<($($T,)+)>> for JsValue
         {
         }
-        impl<$($T,)+> Upcast<Nullable<JsValue>> for ArrayTuple<($($T,)+)>
+        impl<$($T,)+> UpcastFrom<ArrayTuple<($($T,)+)>> for Nullable<JsValue>
         {
         }
         // Structural covariance: ArrayTuple<T...> -> ArrayTuple<Target...>
-        impl<$($T,)+ $($Target,)+> Upcast<ArrayTuple<($($Target,)+)>>
-            for ArrayTuple<($($T,)+),>
+        impl<$($T,)+ $($Target,)+> UpcastFrom<ArrayTuple<($($T,)+)>> for ArrayTuple<($($Target,)+)>
         where
-            $($T: JsGeneric + Upcast<$Target>,)+
-            $($Target: JsGeneric,)+
+            $($Target: JsGeneric + UpcastFrom<$T>,)+
+            $($T: JsGeneric,)+
         {
         }
-        impl<$($T,)+ $($Target,)+> Upcast<Nullable<ArrayTuple<($($Target,)+)>>>
-            for ArrayTuple<($($T,)+)>
+        impl<$($T,)+ $($Target,)+> UpcastFrom<ArrayTuple<($($T,)+)>> for Nullable<ArrayTuple<($($Target,)+)>>
         where
-            $($T: JsGeneric + Upcast<$Target>,)+
-            $($Target: JsGeneric,)+
+            $($Target: JsGeneric + UpcastFrom<$T>,)+
+            $($T: JsGeneric,)+
         {
         }
         // ArrayTuple -> Array
         // Allows ArrayTuple<T1, T2, ...> to be used where Array<Target> is expected
         // when all T1, T2, ... are covariant to Target
-        impl<$($T,)+ Target: JsGeneric> Upcast<Array<Target>> for ArrayTuple<($($T,)+),>
+        impl<$($T,)+ Target: JsGeneric> UpcastFrom<ArrayTuple<($($T,)+)>> for Array<Target>
         where
-            $($T: JsGeneric + Upcast<Target>,)+
+            $(Target: UpcastFrom<$T>,)+
+            $($T: JsGeneric,)+
         {
         }
-        impl<$($T,)+ Target: JsGeneric> Upcast<Nullable<Array<Target>>> for ArrayTuple<($($T,)+),>
+        impl<$($T,)+ Target: JsGeneric> UpcastFrom<ArrayTuple<($($T,)+)>> for Nullable<Array<Target>>
         where
-            $($T: JsGeneric + Upcast<Target>,)+
+            $(Target: UpcastFrom<$T>,)+
+            $($T: JsGeneric,)+
         {}
         // Array<T> -> ArrayTuple<T, ...>
-        impl<T: JsGeneric> Upcast<ArrayTuple<($($Ts,)+)>> for Array<T> {}
-        impl<T: JsGeneric> Upcast<ArrayTuple<($(Nullable<$Ts>,)+)>> for Array<T> {}
+        impl<T: JsGeneric> UpcastFrom<Array<T>> for ArrayTuple<($($Ts,)+)> {}
+        impl<T: JsGeneric> UpcastFrom<Array<T>> for ArrayTuple<($(Nullable<$Ts>,)+)> {}
     };
 }
 
@@ -2244,7 +2244,7 @@ extern "C" {
     ) -> Result<ArrayBuffer, JsValue>;
 }
 
-impl Upcast<ArrayBuffer> for &[u8] {}
+impl UpcastFrom<&[u8]> for ArrayBuffer {}
 
 // SharedArrayBuffer
 #[wasm_bindgen]
@@ -3164,8 +3164,8 @@ extern "C" {
     pub fn value_of(this: &Boolean) -> bool;
 }
 
-impl Upcast<Boolean> for bool {}
-impl Upcast<bool> for Boolean {}
+impl UpcastFrom<bool> for Boolean {}
+impl UpcastFrom<Boolean> for bool {}
 
 impl Boolean {
     /// Typed Boolean true constant.
@@ -4361,11 +4361,11 @@ extern "C" {
     pub fn to_string<T: JsFunction = fn() -> JsValue>(this: &Function<T>) -> JsString;
 }
 
-// Basic Upcast impls for Function<T>
-impl<T: JsFunction> Upcast<JsValue> for Function<T> {}
-impl<T: JsFunction> Upcast<Nullable<JsValue>> for Function<T> {}
-impl<T: JsFunction> Upcast<Object> for Function<T> {}
-impl<T: JsFunction> Upcast<Nullable<Object>> for Function<T> {}
+// Basic UpcastFrom impls for Function<T>
+impl<T: JsFunction> UpcastFrom<Function<T>> for JsValue {}
+impl<T: JsFunction> UpcastFrom<Function<T>> for Nullable<JsValue> {}
+impl<T: JsFunction> UpcastFrom<Function<T>> for Object {}
+impl<T: JsFunction> UpcastFrom<Function<T>> for Nullable<Object> {}
 
 // len() method for Function<T> using JsFunction::ARITY
 impl<T: JsFunction> Function<T> {
@@ -4382,46 +4382,46 @@ impl<T: JsFunction> Function<T> {
 }
 
 // Base traits for function signature types.
-pub trait JsFunction: Sized + 'static {
-    type Ret: JsGeneric;
+pub trait JsFunction {
+    type Ret;
     const ARITY: usize;
 }
 
 pub trait JsFunction1: JsFunction {
-    type Arg1: JsGeneric;
+    type Arg1;
     type Bind1: JsFunction;
 }
 pub trait JsFunction2: JsFunction1 {
-    type Arg2: JsGeneric;
+    type Arg2;
     type Bind2: JsFunction;
 }
 pub trait JsFunction3: JsFunction2 {
-    type Arg3: JsGeneric;
+    type Arg3;
     type Bind3: JsFunction;
 }
 pub trait JsFunction4: JsFunction3 {
-    type Arg4: JsGeneric;
+    type Arg4;
     type Bind4: JsFunction;
 }
 pub trait JsFunction5: JsFunction4 {
-    type Arg5: JsGeneric;
+    type Arg5;
     type Bind5: JsFunction;
 }
 pub trait JsFunction6: JsFunction5 {
-    type Arg6: JsGeneric;
+    type Arg6;
     type Bind6: JsFunction;
 }
 pub trait JsFunction7: JsFunction6 {
-    type Arg7: JsGeneric;
+    type Arg7;
     type Bind7: JsFunction;
 }
 pub trait JsFunction8: JsFunction7 {
-    type Arg8: JsGeneric;
+    type Arg8;
     type Bind8: JsFunction;
 }
 
 // Manual impl for fn() -> R
-impl<Ret: JsGeneric> JsFunction for fn() -> Ret {
+impl<Ret> JsFunction for fn() -> Ret {
     type Ret = Ret;
     const ARITY: usize = 0;
 }
@@ -4483,7 +4483,7 @@ macro_rules! impl_fn {
     };
 
     (@impl $arity:literal [$($A:ident)+] [$($trait:ident $arg:ident $bind:ident {$bind_ty:ty})+]) => {
-        impl<Ret: JsGeneric $(, $A: JsGeneric)+> JsFunction for fn($($A),+) -> Ret {
+        impl<Ret $(, $A)+> JsFunction for fn($($A),+) -> Ret {
             type Ret = Ret;
             const ARITY: usize = $arity;
         }
@@ -4494,7 +4494,7 @@ macro_rules! impl_fn {
     (@traits [$($A:ident)+] []) => {};
 
     (@traits [$($A:ident)+] [$trait:ident $arg:ident $bind:ident {$bind_ty:ty} $($rest:tt)*]) => {
-        impl<Ret: JsGeneric $(, $A: JsGeneric)+> $trait for fn($($A),+) -> Ret {
+        impl<Ret $(, $A)+> $trait for fn($($A),+) -> Ret {
             type $arg = $arg;
             type $bind = $bind_ty;
         }
@@ -4513,11 +4513,11 @@ pub trait JsArgs<T: JsFunction> {
 }
 
 // Manual impl for 0-arg
-impl<F: JsFunction> JsArgs<F> for () {
+impl<Ret: JsGeneric, F: JsFunction<Ret = Ret>> JsArgs<F> for () {
     type BindOutput = Function<F>;
 
     #[inline]
-    fn apply_call(self, func: &Function<F>, context: &JsValue) -> Result<F::Ret, JsValue> {
+    fn apply_call(self, func: &Function<F>, context: &JsValue) -> Result<Ret, JsValue> {
         func.call0(context)
     }
 
@@ -4665,20 +4665,20 @@ macro_rules! impl_fn_upcasts {
     };
 
     (@same []) => {
-        impl<R1, R2> Upcast<Function<fn() -> R2>> for Function<fn() -> R1>
+        impl<R1, R2> UpcastFrom<Function<fn() -> R1>> for Function<fn() -> R2>
         where
-            R1: JsGeneric + Upcast<R2>,
-            R2: JsGeneric
+            R2: JsGeneric + UpcastFrom<R1>,
+            R1: JsGeneric
         {}
     };
 
     (@same [$($A1:ident $A2:ident)+]) => {
-        impl<R1, R2, $($A1, $A2),+> Upcast<Function<fn($($A2),+) -> R2>> for Function<fn($($A1),+) -> R1>
+        impl<R1, R2, $($A1, $A2),+> UpcastFrom<Function<fn($($A1),+) -> R1>> for Function<fn($($A2),+) -> R2>
         where
-            R1: JsGeneric + Upcast<R2>,
-            R2: JsGeneric,
-            $($A1: JsGeneric,)+
-            $($A2: JsGeneric + Upcast<$A1>,)+
+            R2: JsGeneric + UpcastFrom<R1>,
+            R1: JsGeneric,
+            $($A2: JsGeneric,)+
+            $($A1: JsGeneric + UpcastFrom<$A2>,)+
         {}
     };
 
@@ -4694,49 +4694,49 @@ macro_rules! impl_fn_upcasts {
 
     // Extend: 0 -> N
     (@extend [] [$($O:ident)+]) => {
-        impl<R1, R2, $($O),+> Upcast<Function<fn($($O),+) -> R2>> for Function<fn() -> R1>
+        impl<R1, R2, $($O),+> UpcastFrom<Function<fn() -> R1>> for Function<fn($($O),+) -> R2>
         where
-            R1: JsGeneric + Upcast<R2>,
-            R2: JsGeneric,
+            R2: JsGeneric + UpcastFrom<R1>,
+            R1: JsGeneric,
             $($O: JsGeneric,)+
-            $(Undefined: Upcast<$O>,)+
+            $($O: UpcastFrom<Undefined>,)+
         {}
     };
 
     // Extend: N -> M
     (@extend [$($A1:ident $A2:ident)+] [$($O:ident)+]) => {
-        impl<R1, R2, $($A1, $A2,)+ $($O),+> Upcast<Function<fn($($A2,)+ $($O),+) -> R2>> for Function<fn($($A1),+) -> R1>
+        impl<R1, R2, $($A1, $A2,)+ $($O),+> UpcastFrom<Function<fn($($A1),+) -> R1>> for Function<fn($($A2,)+ $($O),+) -> R2>
         where
-            R1: JsGeneric + Upcast<R2>,
-            R2: JsGeneric,
-            $($A1: JsGeneric,)+
-            $($A2: JsGeneric + Upcast<$A1>,)+
+            R2: JsGeneric + UpcastFrom<R1>,
+            R1: JsGeneric,
+            $($A2: JsGeneric,)+
+            $($A1: JsGeneric + UpcastFrom<$A2>,)+
             $($O: JsGeneric,)+
-            $(Undefined: Upcast<$O>,)+
+            $($O: UpcastFrom<Undefined>,)+
         {}
     };
 
     // Shrink: N -> 0
     (@shrink [] [$($O:ident)+]) => {
-        impl<R1, R2, $($O),+> Upcast<Function<fn() -> R2>> for Function<fn($($O),+) -> R1>
+        impl<R1, R2, $($O),+> UpcastFrom<Function<fn($($O),+) -> R1>> for Function<fn() -> R2>
         where
-            R1: JsGeneric + Upcast<R2>,
-            R2: JsGeneric,
+            R2: JsGeneric + UpcastFrom<R1>,
+            R1: JsGeneric,
             $($O: JsGeneric,)+
-            $(Undefined: Upcast<$O>,)+
+            $($O: UpcastFrom<Undefined>,)+
         {}
     };
 
     // Shrink: M -> N
     (@shrink [$($A1:ident $A2:ident)+] [$($O:ident)+]) => {
-        impl<R1, R2, $($A1, $A2,)+ $($O),+> Upcast<Function<fn($($A2),+) -> R2>> for Function<fn($($A1,)+ $($O),+) -> R1>
+        impl<R1, R2, $($A1, $A2,)+ $($O),+> UpcastFrom<Function<fn($($A1,)+ $($O),+) -> R1>> for Function<fn($($A2),+) -> R2>
         where
-            R1: JsGeneric + Upcast<R2>,
-            R2: JsGeneric,
-            $($A1: JsGeneric,)+
-            $($A2: JsGeneric + Upcast<$A1>,)+
+            R2: JsGeneric + UpcastFrom<R1>,
+            R1: JsGeneric,
+            $($A2: JsGeneric,)+
+            $($A1: JsGeneric + UpcastFrom<$A2>,)+
             $($O: JsGeneric,)+
-            $(Undefined: Upcast<$O>,)+
+            $($O: UpcastFrom<Undefined>,)+
         {}
     };
 }
@@ -4771,82 +4771,72 @@ impl_fn_upcasts!();
 /// Thus, short of fully unifying js_sys and core, the only way to maintain
 /// None disjointness for blanket implementations requires the brief
 /// repetition of closure types here.
-// pub trait ClosureIntoFunction: WasmClosure {
-//     type FuncType;
-// }
+pub trait ClosureIntoFunction: WasmClosure {
+    type FuncType: JsFunction;
+}
 
-// pub trait FunctionIntoClosure<F> {
-//     type ClosureType: ?Sized + ClosureIntoFunction<FuncType = F>;
-// }
+macro_rules! impl_closure_into_function {
+    (@impl $Fn:ident ($($var:ident),*)) => {
+        impl<$($var: FromWasmAbi,)* R: IntoWasmAbi> ClosureIntoFunction for dyn $Fn($($var),*) -> R + '_ {
+            type FuncType = fn($($var),*) -> R;
+        }
+    };
 
-// macro_rules! impl_closure_into_function {
-//     (@impl $Fn:ident ($($var:ident),*)) => {
-//         impl<$($var: FromWasmAbi,)* R: IntoWasmAbi> ClosureIntoFunction for dyn $Fn($($var),*) -> R + '_ {
-//             type FuncType = fn($($var),*) -> R;
-//         }
+    ($( ($($var:ident)*) )*) => {$(
+        impl_closure_into_function!(@impl Fn ($($var),*));
+        impl_closure_into_function!(@impl FnMut ($($var),*));
+    )*};
+}
 
-//         impl<$($var: FromWasmAbi,)* R: IntoWasmAbi> FunctionIntoClosure<fn($($var),*) -> R> for dyn $Fn($($var),*) -> R + '_ {
-//             type ClosureType = dyn $Fn($($var),*) -> R;
-//         }
-//     };
+impl_closure_into_function! {
+    ()
+    (A)
+    (A B)
+    (A B C)
+    (A B C D)
+    (A B C D E)
+    (A B C D E F)
+    (A B C D E F G)
+    (A B C D E F G H)
+}
 
-//     ($( ($($var:ident)*) )*) => {$(
-//         impl_closure_into_function!(@impl Fn ($($var),*));
-//         impl_closure_into_function!(@impl FnMut ($($var),*));
-//     )*};
-// }
+impl Function {
+    /// Convert a Rust closure into a typed JavaScript Function.
+    ///
+    /// Type parameters are inferred from the closure's signature.
+    /// Unused argument slots become `None`.
+    ///
+    /// Use [`Function::from_closure_upcast`] instead if the Function
+    /// type is known, to simultaneously perform a compile time
+    /// type-safe upcast.
+    ///
+    /// **Note:** Rust closure types cannot be passed directly therefore
+    /// the function will need to be explicitly upcast into a function
+    /// on JS ABI types. For example a return value of `()` must be cast
+    /// into `Undefined` to call the function from JS.
+    ///
+    /// _This function is marked as unstable until a solution to
+    /// "canonical generic closure conversion" can be implemented._
+    #[cfg(js_sys_unstable_apis)]
+    pub fn from_closure<C: ClosureIntoFunction + ?Sized>(
+        closure: Closure<C>,
+    ) -> Function<<C as ClosureIntoFunction>::FuncType> {
+        closure.into_js_value().unchecked_into()
+    }
 
-// impl_closure_into_function! {
-//     ()
-//     (A)
-//     (A B)
-//     (A B C)
-//     (A B C D)
-//     (A B C D E)
-//     (A B C D E F)
-//     (A B C D E F G)
-//     (A B C D E F G H)
-// }
-
-// impl Function {
-//     /// Convert a Rust closure into a typed JavaScript Function.
-//     ///
-//     /// Type parameters are inferred from the closure's signature.
-//     /// Unused argument slots become `None`.
-//     ///
-//     /// Use [`Function::from_closure_upcast`] instead if the Function
-//     /// type is known, to simultaneously perform a compile time
-//     /// type-safe upcast.
-//     ///
-//     /// **Note:** Rust closure types cannot be passed directly therefore
-//     /// the function will need to be explicitly upcast into a function
-//     /// on JS ABI types. For example a return value of `()` must be cast
-//     /// into `Undefined` to call the function from JS.
-//     ///
-//     /// _This function is marked as unstable until a solution to
-//     /// "canonical generic closure conversion" can be implemented._
-//     #[cfg(js_sys_unstable_apis)]
-//     pub fn from_closure<C: ClosureIntoFunction + ?Sized>(
-//         closure: Closure<C>,
-//     ) -> Function<<C as ClosureIntoFunction>::FuncType> {
-//         closure.into_js_value().unchecked_into()
-//     }
-
-//     /// Convert a Rust closure into a typed JavaScript Function.
-//     ///
-//     /// Performs a direct type-safe conversion and upcast of a closure
-//     /// into a corresponding typed JavaScript Function.
-//     pub fn from_closure_upcast<C, F>(
-//         closure: Closure<C>,
-//     ) -> Function<F>
-//     where
-//         C: ?Sized + ClosureIntoFunction,
-//         F: JsFunction,
-//         C: FunctionIntoClosure<F>,
-//     {
-//         closure.into_js_value().unchecked_into()
-//     }
-// }
+    /// Convert a Rust closure into a typed JavaScript Function.
+    ///
+    /// Performs a direct type-safe conversion and upcast of a closure
+    /// into a corresponding typed JavaScript Function.
+    pub fn from_closure_upcast<C, F>(closure: Closure<C>) -> Function<F>
+    where
+        C: ?Sized + ClosureIntoFunction,
+        F: JsFunction,
+        Function<F>: UpcastFrom<Function<<C as ClosureIntoFunction>::FuncType>>,
+    {
+        closure.into_js_value().unchecked_into()
+    }
+}
 
 #[cfg(not(js_sys_unstable_apis))]
 impl Function {
@@ -5220,7 +5210,7 @@ extern "C" {
     pub fn next<T: FromWasmAbi>(this: &Iterator<T>) -> Result<IteratorNext<T>, JsValue>;
 }
 
-impl<T> Upcast<Object> for Iterator<T> {}
+impl<T> UpcastFrom<Iterator<T>> for Object {}
 
 impl Iterator {
     fn looks_like_iterator(it: &JsValue) -> bool {
@@ -5287,7 +5277,7 @@ extern "C" {
     ) -> Result<Promise<IteratorNext<T>>, JsValue>;
 }
 
-impl<T> Upcast<Object> for AsyncIterator<T> {}
+impl<T> UpcastFrom<AsyncIterator<T>> for Object {}
 
 // iterators in JS are themselves iterable
 impl<T> AsyncIterable for AsyncIterator<T> {
@@ -5981,8 +5971,8 @@ macro_rules! number_from {
             }
         }
 
-        impl Upcast<$x> for Number {}
-        impl Upcast<Number> for $x {}
+        impl UpcastFrom<Number> for $x {}
+        impl UpcastFrom<$x> for Number {}
     )*)
 }
 number_from!(i8 u8 i16 u16 i32 u32 f32 f64);
@@ -9598,16 +9588,16 @@ extern "C" {
 }
 
 // These upcasts are non-castable due to the constraints on the function
-// but the Upcast covariance must still extend through closure types.
-// (impl Upcast really just means CovariantGeneric relation)
-impl Upcast<JsString> for String {}
-impl Upcast<String> for JsString {}
+// but the UpcastFrom covariance must still extend through closure types.
+// (impl UpcastFrom really just means CovariantGeneric relation)
+impl UpcastFrom<String> for JsString {}
+impl UpcastFrom<JsString> for String {}
 
-impl Upcast<JsString> for &str {}
-impl Upcast<&str> for JsString {}
+impl UpcastFrom<&str> for JsString {}
+impl UpcastFrom<JsString> for &str {}
 
-impl Upcast<JsString> for char {}
-impl Upcast<char> for JsString {}
+impl UpcastFrom<char> for JsString {}
+impl UpcastFrom<JsString> for char {}
 
 impl JsString {
     /// Returns the `JsString` value of this JS value if it's an instance of a

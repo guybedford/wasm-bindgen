@@ -368,6 +368,34 @@ impl<T: FromWasmAbi> FromWasmAbi for AssertUnwindSafe<T> {
     }
 }
 
+/// A trait for defining upcast relationships from a source type.
+///
+/// This is the inverse of [`Upcast<T>`] - instead of implementing
+/// `impl Upcast<Target> for Source`, you implement `impl UpcastFrom<Source> for Target`.
+///
+/// # Why UpcastFrom?
+///
+/// This resolves Rust's orphan rule issues: you can implement `UpcastFrom<MyType>`
+/// for external types when `MyType` is local to your crate, whereas implementing
+/// `Upcast<ExternalType>` would be prohibited by orphan rules.
+///
+/// # ⚠️ Unstable
+///
+/// This is part of the internal [`convert`](crate::convert) module, **no
+/// stability guarantees** are provided. Use at your own risk. See its
+/// documentation for more details.
+///
+/// # Relationship to Upcast
+///
+/// `UpcastFrom<S>` provides a blanket implementation of `Upcast<T>`:
+/// ```ignore
+/// impl<S, T> Upcast<T> for S where T: UpcastFrom<S> {}
+/// ```
+///
+/// This means implementing `UpcastFrom<Source> for Target` automatically gives you
+/// `Upcast<Target> for Source`, enabling `source.upcast()` to produce `Target`.
+pub trait UpcastFrom<S: ?Sized> {}
+
 /// A trait for type-safe generic upcasting.
 ///
 /// # ⚠️ Unstable
@@ -375,6 +403,12 @@ impl<T: FromWasmAbi> FromWasmAbi for AssertUnwindSafe<T> {
 /// This is part of the internal [`convert`](crate::convert) module, **no
 /// stability guarantees** are provided. Use at your own risk. See its
 /// documentation for more details.
+///
+/// # Note
+///
+/// `Upcast<T>` has a blanket implementation for all types where `T: UpcastFrom<Self>`.
+/// New upcast relationships should typically be defined by implementing `FromUpcast`
+/// rather than `Upcast` directly, to avoid orphan rule issues.
 pub trait Upcast<T: ?Sized> {
     /// Perform a zero-cost type-safe upcast to a wider type within the Wasm
     /// bindgen generics type system.
@@ -427,11 +461,20 @@ pub trait Upcast<T: ?Sized> {
     }
 }
 
-impl<'a, T, Target> Upcast<&'a mut Target> for &'a mut T where T: Upcast<Target> {}
-impl<'a, T, Target> Upcast<Nullable<&'a mut Target>> for &'a mut T where T: Upcast<Target> {}
+// Blanket impl: UpcastFrom<S> for T implies Upcast<T> for S
+impl<S, T> Upcast<T> for S
+where
+    T: UpcastFrom<S> + ?Sized,
+    S: ?Sized,
+{
+}
 
-impl<'a, T, Target> Upcast<&'a Target> for &'a T where T: Upcast<Target> {}
-impl<'a, T, Target> Upcast<Nullable<&'a Target>> for &'a T where T: Upcast<Target> {}
+// Reference impls using UpcastFrom
+impl<'a, T, Target> UpcastFrom<&'a mut T> for &'a mut Target where Target: UpcastFrom<T> {}
+impl<'a, T, Target> UpcastFrom<&'a mut T> for Nullable<&'a mut Target> where Target: UpcastFrom<T> {}
+
+impl<'a, T, Target> UpcastFrom<&'a T> for &'a Target where Target: UpcastFrom<T> {}
+impl<'a, T, Target> UpcastFrom<&'a T> for Nullable<&'a Target> where Target: UpcastFrom<T> {}
 
 /// Marker trait to indicate a callable upcast type
 pub trait AsUpcast<T: ErasableGeneric, R = <T as ErasableGeneric>::Repr>:

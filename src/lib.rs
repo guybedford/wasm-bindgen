@@ -52,7 +52,7 @@ extern crate alloc;
 #[cfg(feature = "std")]
 extern crate std;
 
-use crate::convert::{TryFromJsValue, Upcast, VectorIntoWasmAbi};
+use crate::convert::{TryFromJsValue, UpcastFrom, VectorIntoWasmAbi};
 use alloc::boxed::Box;
 use alloc::string::String;
 use alloc::vec::Vec;
@@ -957,7 +957,7 @@ impl AsRef<JsValue> for JsValue {
     }
 }
 
-impl Upcast<JsValue> for JsValue {}
+impl UpcastFrom<JsValue> for JsValue {}
 
 // Loosely based on toInt32 in ecma-272 for abi semantics
 // with restriction that it only applies for numbers
@@ -1217,10 +1217,10 @@ impl fmt::Display for Undefined {
     }
 }
 
-impl Upcast<Undefined> for Undefined {}
-impl Upcast<Undefined> for () {}
-impl Upcast<()> for Undefined {}
-impl Upcast<JsValue> for Undefined {}
+impl UpcastFrom<Undefined> for Undefined {}
+impl UpcastFrom<()> for Undefined {}
+impl UpcastFrom<Undefined> for () {}
+impl UpcastFrom<Undefined> for JsValue {}
 
 // Null
 #[wasm_bindgen_macro::wasm_bindgen(wasm_bindgen = crate)]
@@ -1255,8 +1255,8 @@ impl fmt::Display for Null {
     }
 }
 
-impl Upcast<Null> for Null {}
-impl Upcast<JsValue> for Null {}
+impl UpcastFrom<Null> for Null {}
+impl UpcastFrom<Null> for JsValue {}
 
 #[wasm_bindgen_macro::wasm_bindgen(wasm_bindgen = crate)]
 extern "C" {
@@ -1411,12 +1411,12 @@ impl<T: JsGeneric + fmt::Display> fmt::Display for Nullable<T> {
 }
 
 // Nullable upcast impls
-impl Upcast<Nullable<JsValue>> for JsValue {}
-impl<T> Upcast<Nullable<T>> for Undefined {}
-impl<T> Upcast<Nullable<T>> for Null {}
-impl<T> Upcast<Nullable<T>> for () {}
-impl<T> Upcast<JsValue> for Nullable<T> {}
-impl<T, U: Upcast<T>> Upcast<Nullable<T>> for Nullable<U> {}
+impl UpcastFrom<JsValue> for Nullable<JsValue> {}
+impl<T> UpcastFrom<Undefined> for Nullable<T> {}
+impl<T> UpcastFrom<Null> for Nullable<T> {}
+impl<T> UpcastFrom<()> for Nullable<T> {}
+impl<T> UpcastFrom<Nullable<T>> for JsValue {}
+impl<T, U> UpcastFrom<Nullable<U>> for Nullable<T> where T: UpcastFrom<U> {}
 
 // Intrinsics that are simply JS function bindings and can be self-hosted via the macro.
 #[wasm_bindgen_macro::wasm_bindgen(wasm_bindgen = crate)]
