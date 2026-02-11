@@ -1732,35 +1732,20 @@ macro_rules! impl_tuple_covariance {
         impl<$($T,)+> UpcastFrom<ArrayTuple<($($T,)+)>> for Nullable<JsValue>
         {
         }
-        // Structural covariance: ArrayTuple<T...> -> ArrayTuple<Target...>
-        impl<$($T,)+ $($Target,)+> UpcastFrom<ArrayTuple<($($T,)+)>> for ArrayTuple<($($Target,)+)>
-        where
-            $($Target: JsGeneric + UpcastFrom<$T>,)+
-            $($T: JsGeneric,)+
-        {
-        }
-        impl<$($T,)+ $($Target,)+> UpcastFrom<ArrayTuple<($($T,)+)>> for Nullable<ArrayTuple<($($Target,)+)>>
-        where
-            $($Target: JsGeneric + UpcastFrom<$T>,)+
-            $($T: JsGeneric,)+
-        {
-        }
         // ArrayTuple -> Array
-        // Allows ArrayTuple<T1, T2, ...> to be used where Array<Target> is expected
+        // Allows (T1, T2, ...) to be used where (Target) is expected
         // when all T1, T2, ... are covariant to Target
-        impl<$($T,)+ Target: JsGeneric> UpcastFrom<ArrayTuple<($($T,)+)>> for Array<Target>
+        impl<$($T,)+ Target> UpcastFrom<ArrayTuple<($($T,)+)>> for Array<Target>
         where
             $(Target: UpcastFrom<$T>,)+
-            $($T: JsGeneric,)+
         {
         }
-        impl<$($T,)+ Target: JsGeneric> UpcastFrom<ArrayTuple<($($T,)+)>> for Nullable<Array<Target>>
+        impl<$($T,)+ Target> UpcastFrom<ArrayTuple<($($T,)+)>> for Nullable<Array<Target>>
         where
             $(Target: UpcastFrom<$T>,)+
-            $($T: JsGeneric,)+
         {}
         // Array<T> -> ArrayTuple<T, ...>
-        impl<T: JsGeneric> UpcastFrom<Array<T>> for ArrayTuple<($($Ts,)+)> {}
+        impl<T> UpcastFrom<Array<T>> for ArrayTuple<($($Ts,)+)> {}
         impl<T: JsGeneric> UpcastFrom<Array<T>> for ArrayTuple<($(Nullable<$Ts>,)+)> {}
     };
 }
@@ -1773,6 +1758,8 @@ impl_tuple_covariance!([T1 T2 T3 T4 T5] [Target1 Target2 Target3 Target4 Target5
 impl_tuple_covariance!([T1 T2 T3 T4 T5 T6] [Target1 Target2 Target3 Target4 Target5 Target6] [T T T T T T]);
 impl_tuple_covariance!([T1 T2 T3 T4 T5 T6 T7] [Target1 Target2 Target3 Target4 Target5 Target6 Target7] [T T T T T T T]);
 impl_tuple_covariance!([T1 T2 T3 T4 T5 T6 T7 T8] [Target1 Target2 Target3 Target4 Target5 Target6 Target7 Target8] [T T T T T T T T]);
+
+impl<T: JsTuple, U: JsTuple> UpcastFrom<ArrayTuple<T>> for ArrayTuple<U> where U: UpcastFrom<T> {}
 
 /// Iterator returned by `Array::into_iter`
 #[derive(Debug, Clone)]
@@ -4388,45 +4375,45 @@ impl<T: JsFunction> Function<T> {
 
 // Base traits for function signature types.
 pub trait JsFunction {
-    type Ret;
+    type Ret: JsGeneric;
     const ARITY: usize;
 }
 
 pub trait JsFunction1: JsFunction {
-    type Arg1;
+    type Arg1: JsGeneric;
     type Bind1: JsFunction;
 }
 pub trait JsFunction2: JsFunction1 {
-    type Arg2;
+    type Arg2: JsGeneric;
     type Bind2: JsFunction;
 }
 pub trait JsFunction3: JsFunction2 {
-    type Arg3;
+    type Arg3: JsGeneric;
     type Bind3: JsFunction;
 }
 pub trait JsFunction4: JsFunction3 {
-    type Arg4;
+    type Arg4: JsGeneric;
     type Bind4: JsFunction;
 }
 pub trait JsFunction5: JsFunction4 {
-    type Arg5;
+    type Arg5: JsGeneric;
     type Bind5: JsFunction;
 }
 pub trait JsFunction6: JsFunction5 {
-    type Arg6;
+    type Arg6: JsGeneric;
     type Bind6: JsFunction;
 }
 pub trait JsFunction7: JsFunction6 {
-    type Arg7;
+    type Arg7: JsGeneric;
     type Bind7: JsFunction;
 }
 pub trait JsFunction8: JsFunction7 {
-    type Arg8;
+    type Arg8: JsGeneric;
     type Bind8: JsFunction;
 }
 
 // Manual impl for fn() -> R
-impl<Ret> JsFunction for fn() -> Ret {
+impl<Ret: JsGeneric> JsFunction for fn() -> Ret {
     type Ret = Ret;
     const ARITY: usize = 0;
 }
@@ -4488,7 +4475,7 @@ macro_rules! impl_fn {
     };
 
     (@impl $arity:literal [$($A:ident)+] [$($trait:ident $arg:ident $bind:ident {$bind_ty:ty})+]) => {
-        impl<Ret $(, $A)+> JsFunction for fn($($A),+) -> Ret {
+        impl<Ret: JsGeneric $(, $A: JsGeneric)+> JsFunction for fn($($A),+) -> Ret {
             type Ret = Ret;
             const ARITY: usize = $arity;
         }
@@ -4499,7 +4486,7 @@ macro_rules! impl_fn {
     (@traits [$($A:ident)+] []) => {};
 
     (@traits [$($A:ident)+] [$trait:ident $arg:ident $bind:ident {$bind_ty:ty} $($rest:tt)*]) => {
-        impl<Ret $(, $A)+> $trait for fn($($A),+) -> Ret {
+        impl<Ret: JsGeneric $(, $A: JsGeneric)+> $trait for fn($($A),+) -> Ret {
             type $arg = $arg;
             type $bind = $bind_ty;
         }
@@ -4645,48 +4632,17 @@ impl<T: JsFunction> Function<T> {
     }
 }
 
-#[doc(hidden)]
-/// Map closure types to their corresponding Function types
-/// matching the arity and converting () into None, while
-/// ensuring fully surjective type flow.
-///
-/// The benefit of surjective inferrence here is that:
-/// ```
-///    let func = Function::from_closure(closure);
-/// ```
-/// does not require re-typing the function, with information that was already
-/// available to the closure. The type returned can be called directly via:
-///
-/// ```
-///   func.call();
-/// ```
-///
-/// and argument type inference and arity will work directly provided the
-/// generic types are otherwise erasure-inhabitable.
-///
-/// We repeat what is in Closure here to achieve this because () is used for
-/// Closure, while None is used for Function. And the whole benefit of None
-/// is that it is a type that is disjoint permissing arity implementations
-/// alongside blanket ErasableGeneric implementations. If we migrate None into
-/// core, it would not support disjointness anymore since "upstream crates may
-/// add a new impl of trait ErasableGeneric for None in future versions".
-/// Thus, short of fully unifying js_sys and core, the only way to maintain
-/// None disjointness for blanket implementations requires the brief
-/// repetition of closure types here.
-pub trait ClosureIntoFunction: WasmClosure {
-    type FuncType: JsFunction;
+pub trait FunctionIntoClosure: JsFunction {
+    type ClosureType: WasmClosure + ?Sized;
+    type ClosureTypeMut: WasmClosure + ?Sized;
 }
 
 macro_rules! impl_closure_into_function {
-    (@impl $Fn:ident ($($var:ident),*)) => {
-        impl<$($var: FromWasmAbi,)* R: IntoWasmAbi> ClosureIntoFunction for dyn $Fn($($var),*) -> R + '_ {
-            type FuncType = fn($($var),*) -> R;
+    ( $(($($var:ident)*))* ) => {$(
+        impl<$($var: FromWasmAbi + JsGeneric,)* R: IntoWasmAbi + JsGeneric> FunctionIntoClosure for fn($($var),*) -> R {
+            type ClosureType = dyn Fn($($var),*) -> R;
+            type ClosureTypeMut = dyn FnMut($($var),*) -> R;
         }
-    };
-
-    ($( ($($var:ident)*) )*) => {$(
-        impl_closure_into_function!(@impl Fn ($($var),*));
-        impl_closure_into_function!(@impl FnMut ($($var),*));
     )*};
 }
 
@@ -4702,40 +4658,101 @@ impl_closure_into_function! {
     (A B C D E F G H)
 }
 
+// Note we can implement Deref, AsRef, and From once we have JsCanon trait.
+// JsCanon in turn depends on being able to emit JsCanon for imported types,
+// which as a js-sys trait then creates a dependency on js-sys from codegen.
 impl<F: JsFunction> Function<F> {
     /// Convert a Rust closure into a typed JavaScript Function.
     ///
-    /// Type parameters are inferred from the closure's signature.
-    /// Unused argument slots become `None`.
+    /// This function releases ownership of the closure to JS, and provides
+    /// an owned function handle for the same closure.
     ///
-    /// Use [`Function::from_closure_upcast`] instead if the Function
-    /// type is known, to simultaneously perform a compile time
-    /// type-safe upcast.
+    /// The conversion is a direct type-safe conversion and upcast of a
+    /// closure into its corresponding typed JavaScript Function,
+    /// based on covariance and contravariance [`Upcast`] trait hierarchy.
     ///
-    /// **Note:** Rust closure types cannot be passed directly therefore
-    /// the function will need to be explicitly upcast into a function
-    /// on JS ABI types. For example a return value of `()` must be cast
-    /// into `Undefined` to call the function from JS.
+    /// This method is only supported for static closures which do not have
+    /// borrowed lifetime data, and thus can be released into JS.
     ///
-    /// _This function is marked as unstable until a solution to
-    /// "canonical generic closure conversion" can be implemented._
-    #[cfg(js_sys_unstable_apis)]
-    pub fn from_closure<C: ClosureIntoFunction<FuncType = F> + ?Sized>(
-        closure: Closure<C>,
-    ) -> Function<F> {
+    /// For borrowed closures, which cannot cede ownership to JS,
+    /// instead use [`Function::from_closure_ref`].
+    ///
+    /// For mutable closures, see [`Function::from_closure_mut`].
+    #[inline]
+    pub fn from_closure<C>(closure: Closure<C>) -> Self
+    where
+        F: FunctionIntoClosure,
+        C: WasmClosure + ?Sized,
+        <F as FunctionIntoClosure>::ClosureType: UpcastFrom<C>,
+    {
+        debug_assert!(!C::IS_MUT, "use from_closure_mut for mutable closures");
+        closure.into_js_value().unchecked_into()
+    }
+    /// Convert a Rust closure into a typed JavaScript Function.
+    ///
+    /// This function releases ownership of the closure to JS, and provides
+    /// an owned function handle for the same closure.
+    ///
+    /// The conversion is a direct type-safe conversion and upcast of a
+    /// closure into its corresponding typed JavaScript Function,
+    /// based on covariance and contravariance [`Upcast`] trait hierarchy.
+    ///
+    /// This method is only supported for static closures which do not have
+    /// borrowed lifetime data, and thus can be released into JS.
+    ///
+    /// For borrowed closures, which cannot cede ownership to JS,
+    /// instead use [`Function::from_closure_mut_ref`].
+    ///
+    /// For immutable closures, see [`Function::from_closure`].
+    #[inline]
+    pub fn from_closure_mut<C>(closure: Closure<C>) -> Self
+    where
+        F: FunctionIntoClosure,
+        C: WasmClosure + ?Sized,
+        <F as FunctionIntoClosure>::ClosureTypeMut: UpcastFrom<C>,
+    {
+        debug_assert!(C::IS_MUT, "use from_closure for immutable closures");
         closure.into_js_value().unchecked_into()
     }
 
     /// Convert a Rust closure into a typed JavaScript Function.
     ///
-    /// Performs a direct type-safe conversion and upcast of a closure
-    /// into a corresponding typed JavaScript Function.
-    pub fn from_closure_upcast<C>(closure: Closure<C>) -> Function<F>
+    /// The conversion is a direct type-safe conversion and upcast of a
+    /// closure into its corresponding typed JavaScript Function,
+    /// based on covariance and contravariance [`Upcast`] trait hierarchy.
+    ///
+    /// For transferring ownership to JS, use [`Function::from_closure`].
+    ///
+    /// For mutable closures, see [`Function::from_closure_mut_ref`].
+    #[inline]
+    pub fn from_closure_ref<'a, 'b, C>(closure: &'b ScopedClosure<'a, C>) -> &'b Self
     where
-        C: ?Sized + ClosureIntoFunction,
-        F: UpcastFrom<<C as ClosureIntoFunction>::FuncType>,
+        F: FunctionIntoClosure,
+        C: WasmClosure + ?Sized,
+        <F as FunctionIntoClosure>::ClosureType: UpcastFrom<C>,
     {
-        closure.into_js_value().unchecked_into()
+        debug_assert!(!C::IS_MUT, "use from_closure_ref_mut for mutable closures");
+        closure.as_js_value().unchecked_ref()
+    }
+
+    /// Convert a Rust closure into a typed JavaScript Function.
+    ///
+    /// The conversion is a direct type-safe conversion and upcast of a
+    /// closure into its corresponding typed JavaScript Function,
+    /// based on covariance and contravariance [`Upcast`] trait hierarchy.
+    ///
+    /// For transferring ownership to JS, use [`Function::from_closure_ref`].
+    ///
+    /// For immutable closures, see [`Function::from_closure_mut`].
+    #[inline]
+    pub fn from_closure_mut_ref<'a, 'b, C>(closure: &'b ScopedClosure<'a, C>) -> &'b Self
+    where
+        F: FunctionIntoClosure,
+        C: WasmClosure + ?Sized,
+        <F as FunctionIntoClosure>::ClosureTypeMut: UpcastFrom<C>,
+    {
+        debug_assert!(C::IS_MUT, "use from_closure_ref for immutable closures");
+        closure.as_js_value().unchecked_ref()
     }
 }
 

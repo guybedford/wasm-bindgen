@@ -692,6 +692,7 @@ impl<'src> FirstPassRecord<'src> {
                 name: x.name,
                 js_name: x.js_name,
                 arguments: x.arguments,
+                variadic_type: x.variadic_type,
                 ret_wbg_ty: x.ret_wbg_ty,
                 catch: x.catch,
                 variadic: x.variadic,

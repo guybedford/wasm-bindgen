@@ -722,25 +722,25 @@ fn generic_function_new2() {
 #[wasm_bindgen_test]
 fn closure_to_function_covariance() {
     let closure: Closure<dyn Fn(Number) -> ()> = Closure::new(|_: Number| -> () {});
-    let foo: Function<fn(Number) -> Undefined> = Function::from_closure_upcast(closure);
+    let foo: Function<fn(Number) -> Undefined> = Function::from_closure(closure);
     let _ret1 = foo.call(&JsValue::UNDEFINED, (&Number::from(5),)).unwrap();
 
     let closure: Closure<dyn Fn(Number) -> ()> = Closure::new(|_: Number| -> () {});
-    let foo: Function<fn(Number) -> Undefined> = Function::from_closure_upcast(closure);
+    let foo: Function<fn(Number) -> Undefined> = Function::from_closure(closure);
     let _ret1 = foo.call(&JsValue::UNDEFINED, (&Number::from(5),)).unwrap();
 
     call_function_arg_num(foo.upcast_ref(), Number::from(42));
 
     let closure_i32: Closure<dyn Fn(Number) -> i32> =
         Closure::new(|foo: Number| -> i32 { foo.as_f64().unwrap() as i32 + 5 });
-    let func_i32: Function<fn(Number) -> Number> = Function::from_closure_upcast(closure_i32);
+    let func_i32: Function<fn(Number) -> Number> = Function::from_closure(closure_i32);
     let bound = func_i32.bind1(&JsValue::UNDEFINED, &Number::from(5));
 
     let result_f32 = call_function_none(bound.upcast_ref());
     assert_eq!(result_f32.value_of(), 10.0);
 
     let closure_f32: Closure<dyn Fn() -> f32> = Closure::new(|| -> f32 { 3.14 });
-    let func_f32: Function<fn() -> Number> = Function::from_closure_upcast(closure_f32);
+    let func_f32: Function<fn() -> Number> = Function::from_closure(closure_f32);
 
     let result_f32 = call_function_none(func_f32.upcast_ref());
     assert_eq!(result_f32.value_of() as f32, 3.14);

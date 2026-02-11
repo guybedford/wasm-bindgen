@@ -66,11 +66,24 @@ fn maybe_unstable_docs(unstable: bool) -> Option<proc_macro2::TokenStream> {
 fn generate_arguments(
     arguments: &[(Ident, WbgType<'_>)],
     variadic: bool,
+    variadic_type: Option<&WbgType<'_>>,
     generics_compat: bool,
 ) -> Option<Vec<TokenStream>> {
     let mut result = Vec::with_capacity(arguments.len());
     for (i, (name, wbg_ty)) in arguments.iter().enumerate() {
         if variadic && i + 1 == arguments.len() {
+            // In next_unstable mode (generics_compat=false), use typed Array<T>
+            if !generics_compat {
+                if let Some(vt) = variadic_type {
+                    if let Ok(Some(elem_ty)) =
+                        vt.to_syn_type(crate::util::TypePosition::Argument, false, false)
+                    {
+                        result.push(quote!( #name: &::js_sys::Array<#elem_ty> ));
+                        continue;
+                    }
+                }
+            }
+            // Fallback to untyped Array
             result.push(quote!( #name: &::js_sys::Array ));
         } else {
             let ty = match wbg_ty.to_syn_type(
@@ -451,7 +464,7 @@ impl InterfaceMethod<'_> {
             js_name,
             deprecated,
             arguments,
-            variadic_type: _,
+            variadic_type,
             ret_wbg_ty,
             kind,
             is_static,
@@ -605,7 +618,12 @@ impl InterfaceMethod<'_> {
         let variadic_attr = generate_variadic(*variadic);
 
         // Generate arguments
-        let arguments = match generate_arguments(arguments, *variadic, generics_compat) {
+        let arguments = match generate_arguments(
+            arguments,
+            *variadic,
+            variadic_type.as_ref(),
+            generics_compat,
+        ) {
             Some(args) => args,
             None => {
                 log::warn!(
@@ -1135,6 +1153,7 @@ pub struct Function<'a> {
     pub name: Ident,
     pub js_name: String,
     pub arguments: Vec<(Ident, WbgType<'a>)>,
+    pub variadic_type: Option<WbgType<'a>>,
     pub ret_wbg_ty: Option<WbgType<'a>>,
     pub catch: bool,
     pub variadic: bool,
@@ -1152,6 +1171,7 @@ impl Function<'_> {
             name,
             js_name,
             arguments,
+            variadic_type,
             ret_wbg_ty,
             catch,
             variadic,
@@ -1218,7 +1238,12 @@ impl Function<'_> {
         let js_name_ident = raw_ident(js_name);
 
         // Generate arguments
-        let arguments = generate_arguments(arguments, *variadic, generics_compat)?;
+        let arguments = generate_arguments(
+            arguments,
+            *variadic,
+            variadic_type.as_ref(),
+            generics_compat,
+        )?;
 
         // Build the return type token
         let ret = {

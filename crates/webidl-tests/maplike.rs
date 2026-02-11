@@ -28,7 +28,7 @@ macro_rules! read_test_suite {
             #[cfg(wbg_next_unstable)]
             {
                 // Create a typed VoidFunction<Number, JsString> callback
-                let cb: js_sys::VoidFunction<js_sys::Number, js_sys::JsString> =
+                let cb: js_sys::Function<fn(js_sys::JsString) -> js_sys::Number> = Function::from(
                     Closure::wrap(Box::new(|value: js_sys::Number, key: js_sys::JsString| {
                         let value = value.value_of() as u32;
                         let key: String = key.into();
@@ -38,10 +38,8 @@ macro_rules! read_test_suite {
                             "c" => assert_eq!(value, 3),
                             _ => panic!("unexpected key: {}", key),
                         }
-                    })
-                        as Box<dyn Fn(js_sys::Number, js_sys::JsString)>)
-                    .into_js_value()
-                    .unchecked_into();
+                    })),
+                );
 
                 maplike.for_each(&cb).unwrap();
             }
@@ -56,7 +54,7 @@ macro_rules! read_test_suite {
                     _ => panic!("unexpected key"),
                 }) as Box<dyn Fn(u32, String)>);
 
-                maplike.for_each(cb.as_ref().unchecked_ref()).unwrap();
+                maplike.for_each(cb.as_ref()).unwrap();
             }
 
             let mut entries_vec = vec![];

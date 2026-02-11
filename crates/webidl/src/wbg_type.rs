@@ -969,11 +969,10 @@ impl<'a> WbgType<'a> {
                     // Backwards compat mode: no generics, just plain Function
                     Ok(js_sys("Function"))
                 } else {
-                    // New mode: with generics
-                    // Generate js_sys::TypedFunction<Return, A1, ...> or VoidFunction<A1, ...>
+                    // New mode: Function<fn(A1, A2, ...) -> R>
                     // Use Callback position for both arguments and returns (conservative generalization)
 
-                    // Convert up to 9 parameters - use Callback position for generalized types
+                    // Convert up to 9 parameters
                     let mut param_types = Vec::new();
                     for param in params.iter().take(9) {
                         let ty = param
@@ -982,37 +981,22 @@ impl<'a> WbgType<'a> {
                         param_types.push(ty);
                     }
 
-                    // Build the appropriate function type based on return type
-                    // TypedFunction and VoidFunction have default parameters,
-                    // so we don't need to pad with None (which is now hidden)
-                    let ty: syn::Type = match return_type {
-                        Some(rt) => {
-                            // Has a return type: use TypedFunction<Return, A1, A2, ...>
-                            let ret_ty = rt
-                                .to_syn_type(TypePosition::Callback, legacy, false)?
-                                .unwrap_or_else(|| parse_quote!(::wasm_bindgen::JsValue));
+                    // Return type defaults to Undefined for void functions
+                    let ret_ty: syn::Type = match return_type {
+                        Some(rt) => rt
+                            .to_syn_type(TypePosition::Callback, legacy, false)?
+                            .unwrap_or_else(|| parse_quote!(::wasm_bindgen::JsValue)),
+                        None => parse_quote!(::wasm_bindgen::Undefined),
+                    };
 
-                            if param_types.is_empty() {
-                                parse_quote! {
-                                    ::js_sys::TypedFunction<#ret_ty>
-                                }
-                            } else {
-                                parse_quote! {
-                                    ::js_sys::TypedFunction<#ret_ty, #(#param_types),*>
-                                }
-                            }
+                    // Build Function<fn(A1, A2, ...) -> R>
+                    let ty: syn::Type = if param_types.is_empty() {
+                        parse_quote! {
+                            ::js_sys::Function<fn() -> #ret_ty>
                         }
-                        None => {
-                            // No return type (void): use VoidFunction<A1, A2, ...>
-                            if param_types.is_empty() {
-                                parse_quote! {
-                                    ::js_sys::VoidFunction
-                                }
-                            } else {
-                                parse_quote! {
-                                    ::js_sys::VoidFunction<#(#param_types),*>
-                                }
-                            }
+                    } else {
+                        parse_quote! {
+                            ::js_sys::Function<fn(#(#param_types),*) -> #ret_ty>
                         }
                     };
 

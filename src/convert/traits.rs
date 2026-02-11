@@ -476,6 +476,33 @@ impl<'a, T, Target> UpcastFrom<&'a mut T> for Nullable<&'a mut Target> where Tar
 impl<'a, T, Target> UpcastFrom<&'a T> for &'a Target where Target: UpcastFrom<T> {}
 impl<'a, T, Target> UpcastFrom<&'a T> for Nullable<&'a Target> where Target: UpcastFrom<T> {}
 
+// Tuple upcasts with structural covariance
+macro_rules! impl_tuple_upcast {
+    ([$($T:ident)+] [$($Target:ident)+]) => {
+        // Structural covariance: (T...) -> (Target...)
+        impl<$($T,)+ $($Target,)+> UpcastFrom<($($T,)+)> for ($($Target,)+)
+        where
+            $($Target: JsGeneric + UpcastFrom<$T>,)+
+            $($T: JsGeneric,)+
+        {
+        }
+        impl<$($T,)+ $($Target,)+> UpcastFrom<($($T,)+)> for Nullable<($($Target,)+)>
+        where
+            $($Target: JsGeneric + UpcastFrom<$T>,)+
+            $($T: JsGeneric,)+
+        {
+        }
+    };
+}
+impl_tuple_upcast!([T1][Target1]);
+impl_tuple_upcast!([T1 T2] [Target1 Target2]);
+impl_tuple_upcast!([T1 T2 T3] [Target1 Target2 Target3]);
+impl_tuple_upcast!([T1 T2 T3 T4] [Target1 Target2 Target3 Target4]);
+impl_tuple_upcast!([T1 T2 T3 T4 T5] [Target1 Target2 Target3 Target4 Target5]);
+impl_tuple_upcast!([T1 T2 T3 T4 T5 T6] [Target1 Target2 Target3 Target4 Target5 Target6]);
+impl_tuple_upcast!([T1 T2 T3 T4 T5 T6 T7] [Target1 Target2 Target3 Target4 Target5 Target6 Target7]);
+impl_tuple_upcast!([T1 T2 T3 T4 T5 T6 T7 T8] [Target1 Target2 Target3 Target4 Target5 Target6 Target7 Target8]);
+
 /// Marker trait to indicate a callable upcast type
 pub trait AsUpcast<T: ErasableGeneric, R = <T as ErasableGeneric>::Repr>:
     Upcast<T> + ErasableGeneric<Repr = R>

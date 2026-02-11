@@ -39,9 +39,9 @@ use core::mem::{self, ManuallyDrop};
 
 use crate::__rt::marker::ErasableGeneric;
 use crate::__rt::marker::MaybeUnwindSafe;
-use crate::convert::*;
 use crate::describe::*;
 use crate::JsValue;
+use crate::{convert::*, JsCast};
 use core::marker::PhantomData;
 use core::panic::AssertUnwindSafe;
 
@@ -350,6 +350,11 @@ where
             _marker: PhantomData,
             _lifetime: PhantomData,
         }
+    }
+
+    /// Obtain a `&JsValue` reference for this closure
+    pub fn as_js_value(&self) -> &JsValue {
+        self.js.unchecked_ref()
     }
 }
 

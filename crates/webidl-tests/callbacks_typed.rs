@@ -1,6 +1,8 @@
 use crate::generated::*;
 use js_sys::*;
 use wasm_bindgen::prelude::*;
+#[cfg(wbg_next_unstable)]
+use wasm_bindgen::Undefined;
 use wasm_bindgen_test::*;
 
 /// Regression test: In stable mode, callbacks must accept &Function
@@ -24,11 +26,11 @@ fn regression_stable_callback_accepts_function() {
 fn regression_unstable_callback_uses_typed_wrappers() {
     let test = TestCallbacks::new().unwrap();
 
-    let void_cb: VoidFunction =
+    let void_cb: Function<fn() -> Undefined> =
         Function::from_closure_upcast(Closure::<dyn FnMut()>::new(|| {})).upcast();
     test.invoke_void_callback(&void_cb);
 
-    let num_cb: VoidFunction<Number> =
+    let num_cb: Function<fn(Number) -> Undefined> =
         Function::from_closure_upcast(Closure::<dyn FnMut(Number)>::new(|_| {})).upcast();
     test.invoke_number_callback(&num_cb, 42);
 }
@@ -50,10 +52,11 @@ fn test_void_callback() {
 
     #[cfg(wbg_next_unstable)]
     {
-        let cb: VoidFunction = Function::from_closure(Closure::<dyn FnMut()>::new(move || {
-            called_clone.set(true);
-        }))
-        .upcast();
+        let cb: Function<fn() -> Undefined> =
+            Function::from_closure(Closure::<dyn FnMut()>::new(move || {
+                called_clone.set(true);
+            }))
+            .upcast();
         test.invoke_void_callback(&cb);
     }
 
