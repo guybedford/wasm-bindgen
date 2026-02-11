@@ -1144,3 +1144,178 @@ fn immediate_closure_to_scoped_closure() {
     }
     assert_eq!(sum, 6); // 1 + 2 + 3
 }
+
+// Test fn(...) syntax - shorter alternative to dyn FnMut(...)
+#[wasm_bindgen_test]
+fn immediate_closure_fn_ptr_syntax() {
+    // Test basic call with fn() syntax
+    let mut called = false;
+    immediate_closure_call_fn_syntax(&ImmediateClosure::new(&mut || {
+        called = true;
+    }));
+    assert!(called);
+
+    // Test with args using fn(u32) syntax
+    let mut sum = 0u32;
+    immediate_closure_call_arg_fn_syntax(
+        &ImmediateClosure::new(&mut |x| {
+            sum += x;
+        }),
+        42,
+    );
+    assert_eq!(sum, 42);
+
+    // Test with return using fn(u32) -> u32 syntax
+    let result = immediate_closure_call_ret_fn_syntax(&ImmediateClosure::new(&mut |x| x * 2), 21);
+    assert_eq!(result, 42);
+}
+
+// Test closure upcasting
+mod closure_variance {
+    use super::*;
+    use js_sys::{JsString, Number};
+    use wasm_bindgen::prelude::Upcast;
+    use wasm_bindgen::Undefined;
+
+    #[wasm_bindgen_test]
+    fn return_covariance_i32_to_number() {
+        let closure: Closure<dyn Fn() -> i32> = Closure::new(|| 42i32);
+        let _wider: &Closure<dyn Fn() -> Number> = closure.upcast_ref();
+    }
+
+    #[wasm_bindgen_test]
+    fn return_covariance_number_to_jsvalue() {
+        let closure: Closure<dyn Fn() -> Number> = Closure::new(|| Number::from(42));
+        let _wider: &Closure<dyn Fn() -> JsValue> = closure.upcast_ref();
+    }
+
+    #[wasm_bindgen_test]
+    fn return_covariance_i32_to_jsvalue() {
+        let closure: Closure<dyn Fn() -> i32> = Closure::new(|| 42i32);
+        let _wider: &Closure<dyn Fn() -> JsValue> = closure.upcast_ref();
+    }
+
+    #[wasm_bindgen_test]
+    fn return_covariance_fnmut() {
+        let closure: Closure<dyn FnMut() -> i32> = Closure::new(|| 42i32);
+        let _wider: &Closure<dyn FnMut() -> Number> = closure.upcast_ref();
+    }
+
+    #[wasm_bindgen_test]
+    fn arg_contravariance_jsvalue_to_number() {
+        let closure: Closure<dyn Fn(JsValue)> = Closure::new(|_: JsValue| {});
+        let _narrower: &Closure<dyn Fn(Number)> = closure.upcast_ref();
+    }
+
+    #[wasm_bindgen_test]
+    fn arg_contravariance_number_to_i32() {
+        let closure: Closure<dyn Fn(Number)> = Closure::new(|_: Number| {});
+        let _narrower: &Closure<dyn Fn(i32)> = closure.upcast_ref();
+    }
+
+    #[wasm_bindgen_test]
+    fn arg_contravariance_jsvalue_to_i32() {
+        let closure: Closure<dyn Fn(JsValue)> = Closure::new(|_: JsValue| {});
+        let _narrower: &Closure<dyn Fn(i32)> = closure.upcast_ref();
+    }
+
+    #[wasm_bindgen_test]
+    fn arg_contravariance_fnmut() {
+        let closure: Closure<dyn FnMut(JsValue)> = Closure::new(|_: JsValue| {});
+        let _narrower: &Closure<dyn FnMut(Number)> = closure.upcast_ref();
+    }
+
+    #[wasm_bindgen_test]
+    fn arg_contravariance_multiple_args() {
+        let closure: Closure<dyn Fn(JsValue, JsValue)> = Closure::new(|_: JsValue, _: JsValue| {});
+        let _narrower: &Closure<dyn Fn(Number, JsString)> = closure.upcast_ref();
+    }
+
+    #[wasm_bindgen_test]
+    fn combined_variance() {
+        let closure: Closure<dyn Fn(JsValue) -> i32> = Closure::new(|_: JsValue| 42i32);
+        let _upcast: &Closure<dyn Fn(Number) -> Number> = closure.upcast_ref();
+    }
+
+    #[wasm_bindgen_test]
+    fn combined_variance_complex() {
+        let closure: Closure<dyn Fn(JsValue, JsValue) -> i32> =
+            Closure::new(|_: JsValue, _: JsValue| 42i32);
+        let _upcast: &Closure<dyn Fn(Number, JsString) -> JsValue> = closure.upcast_ref();
+    }
+
+    #[wasm_bindgen_test]
+    fn arity_extend_zero_to_one() {
+        let closure: Closure<dyn Fn()> = Closure::new(|| {});
+        let _extended: &Closure<dyn Fn(Undefined)> = closure.upcast_ref();
+    }
+
+    #[wasm_bindgen_test]
+    fn arity_extend_zero_to_two() {
+        let closure: Closure<dyn Fn()> = Closure::new(|| {});
+        let _extended: &Closure<dyn Fn(Undefined, Undefined)> = closure.upcast_ref();
+    }
+
+    #[wasm_bindgen_test]
+    fn arity_extend_one_to_two() {
+        let closure: Closure<dyn Fn(i32)> = Closure::new(|_: i32| {});
+        let _extended: &Closure<dyn Fn(i32, Undefined)> = closure.upcast_ref();
+    }
+
+    #[wasm_bindgen_test]
+    fn arity_extend_with_contravariance() {
+        let closure: Closure<dyn Fn(JsValue)> = Closure::new(|_: JsValue| {});
+        let _extended: &Closure<dyn Fn(Number, Undefined)> = closure.upcast_ref();
+    }
+
+    #[wasm_bindgen_test]
+    fn arity_extend_fnmut() {
+        let closure: Closure<dyn FnMut()> = Closure::new(|| {});
+        let _extended: &Closure<dyn FnMut(Undefined)> = closure.upcast_ref();
+    }
+
+    #[wasm_bindgen_test]
+    fn arity_shrink_one_to_zero() {
+        let closure: Closure<dyn Fn(Undefined)> = Closure::new(|_: Undefined| {});
+        let _shrunk: &Closure<dyn Fn()> = closure.upcast_ref();
+    }
+
+    #[wasm_bindgen_test]
+    fn arity_shrink_two_to_zero() {
+        let closure: Closure<dyn Fn(Undefined, Undefined)> =
+            Closure::new(|_: Undefined, _: Undefined| {});
+        let _shrunk: &Closure<dyn Fn()> = closure.upcast_ref();
+    }
+
+    #[wasm_bindgen_test]
+    fn arity_shrink_two_to_one() {
+        let closure: Closure<dyn Fn(i32, Undefined)> = Closure::new(|_: i32, _: Undefined| {});
+        let _shrunk: &Closure<dyn Fn(i32)> = closure.upcast_ref();
+    }
+
+    #[wasm_bindgen_test]
+    fn arity_shrink_with_contravariance() {
+        let closure: Closure<dyn Fn(JsValue, Undefined)> =
+            Closure::new(|_: JsValue, _: Undefined| {});
+        let _shrunk: &Closure<dyn Fn(Number)> = closure.upcast_ref();
+    }
+
+    #[wasm_bindgen_test]
+    fn arity_shrink_fnmut() {
+        let closure: Closure<dyn FnMut(Undefined)> = Closure::new(|_: Undefined| {});
+        let _shrunk: &Closure<dyn FnMut()> = closure.upcast_ref();
+    }
+
+    #[wasm_bindgen_test]
+    fn full_variance_extend() {
+        let closure: Closure<dyn Fn(JsValue) -> i32> = Closure::new(|_: JsValue| 42i32);
+        let _upcast: &Closure<dyn Fn(Number, Undefined) -> JsValue> = closure.upcast_ref();
+    }
+
+    #[wasm_bindgen_test]
+    fn full_variance_shrink() {
+        let closure: Closure<dyn Fn(JsValue, Undefined) -> i32> =
+            Closure::new(|_: JsValue, _: Undefined| 42i32);
+        let _upcast: &Closure<dyn Fn(Number) -> JsValue> = closure.upcast_ref();
+    }
+}

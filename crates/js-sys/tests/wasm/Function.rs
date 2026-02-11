@@ -80,7 +80,7 @@ extern "C" {
     #[cfg(js_sys_unstable_apis)]
     fn call_function<T: JsGeneric>(f: &Function<fn() -> T>) -> T;
     #[wasm_bindgen(js_name = call_function)]
-    fn call_function_none(f: &Function) -> Number;
+    fn call_function_none(f: &Function<fn() -> Number>) -> Number;
     #[cfg(not(js_sys_unstable_apis))]
     fn call_function_arg(f: &Function, arg0: JsValue) -> JsValue;
     #[cfg(js_sys_unstable_apis)]
@@ -132,8 +132,8 @@ fn bind() {
     let new_f = f.bind(&get_value_to_bind_to(), ());
     #[cfg(not(js_sys_unstable_apis))]
     {
-        assert_eq!(call_function(f.upcast_ref()), 1);
-        assert_eq!(call_function(new_f.upcast_ref()), 2);
+        assert_eq!(call_function(f.unchecked_ref()), 1);
+        assert_eq!(call_function(new_f.unchecked_ref()), 2);
     }
     #[cfg(js_sys_unstable_apis)]
     {
@@ -148,8 +148,8 @@ fn bind0() {
     #[cfg(not(js_sys_unstable_apis))]
     {
         let new_f = f.bind0(&get_value_to_bind_to());
-        assert_eq!(call_function(f.upcast_ref()), 1);
-        assert_eq!(call_function(new_f.upcast_ref()), 2);
+        assert_eq!(call_function(f.unchecked_ref()), 1);
+        assert_eq!(call_function(new_f.unchecked_ref()), 2);
     }
     #[cfg(js_sys_unstable_apis)]
     {
@@ -721,17 +721,18 @@ fn generic_function_new2() {
 #[cfg(not(js_sys_unstable_apis))]
 #[wasm_bindgen_test]
 fn closure_to_function_covariance() {
-    let closure: Closure<dyn Fn(i32) -> ()> = Closure::new(|_: i32| -> () {});
+    let closure: Closure<dyn Fn(Number) -> ()> = Closure::new(|_: Number| -> () {});
     let foo: Function<fn(Number) -> Undefined> = Function::from_closure_upcast(closure);
     let _ret1 = foo.call(&JsValue::UNDEFINED, (&Number::from(5),)).unwrap();
 
-    let closure: Closure<dyn Fn(u32) -> ()> = Closure::new(|_: u32| -> () {});
+    let closure: Closure<dyn Fn(Number) -> ()> = Closure::new(|_: Number| -> () {});
     let foo: Function<fn(Number) -> Undefined> = Function::from_closure_upcast(closure);
     let _ret1 = foo.call(&JsValue::UNDEFINED, (&Number::from(5),)).unwrap();
 
     call_function_arg_num(foo.upcast_ref(), Number::from(42));
 
-    let closure_i32: Closure<dyn Fn(i32) -> i32> = Closure::new(|foo| -> i32 { foo + 5 });
+    let closure_i32: Closure<dyn Fn(Number) -> i32> =
+        Closure::new(|foo: Number| -> i32 { foo.as_f64().unwrap() as i32 + 5 });
     let func_i32: Function<fn(Number) -> Number> = Function::from_closure_upcast(closure_i32);
     let bound = func_i32.bind1(&JsValue::UNDEFINED, &Number::from(5));
 
@@ -750,7 +751,7 @@ fn closure_to_function_covariance() {
 fn closure_to_function_covariance() {
     let closure: Closure<dyn Fn(i32) -> ()> = Closure::new(|_: i32| -> () {});
     let foo = Function::from_closure(closure);
-    let foo_uc: &VoidFunction<Number> = foo.upcast_ref();
+    let foo_uc: &Function<fn() -> Number> = foo.upcast_ref();
     let _ret1 = foo_uc
         .call(&JsValue::UNDEFINED, (&Number::from(5),))
         .unwrap();

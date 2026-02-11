@@ -4367,6 +4367,11 @@ impl<T: JsFunction> UpcastFrom<Function<T>> for Nullable<JsValue> {}
 impl<T: JsFunction> UpcastFrom<Function<T>> for Object {}
 impl<T: JsFunction> UpcastFrom<Function<T>> for Nullable<Object> {}
 
+// Blanket trait for Function upcast
+// Function<T> upcasts to Function<U> when the underlying fn type T upcasts to U.
+// The fn signature UpcastFrom impls already encode correct variance (covariant return, contravariant args).
+impl<T: JsFunction, U: JsFunction> UpcastFrom<Function<T>> for Function<U> where U: UpcastFrom<T> {}
+
 // len() method for Function<T> using JsFunction::ARITY
 impl<T: JsFunction> Function<T> {
     /// Get the static arity of this function type.
@@ -4640,109 +4645,6 @@ impl<T: JsFunction> Function<T> {
     }
 }
 
-// Comprehensive type-safe cross-function covariant and contravariant casting rules
-macro_rules! impl_fn_upcasts {
-    () => {
-        impl_fn_upcasts!(@arities
-            [0 []]
-            [1 [A1 B1] O1]
-            [2 [A1 B1 A2 B2] O2]
-            [3 [A1 B1 A2 B2 A3 B3] O3]
-            [4 [A1 B1 A2 B2 A3 B3 A4 B4] O4]
-            [5 [A1 B1 A2 B2 A3 B3 A4 B4 A5 B5] O5]
-            [6 [A1 B1 A2 B2 A3 B3 A4 B4 A5 B5 A6 B6] O6]
-            [7 [A1 B1 A2 B2 A3 B3 A4 B4 A5 B5 A6 B6 A7 B7] O7]
-            [8 [A1 B1 A2 B2 A3 B3 A4 B4 A5 B5 A6 B6 A7 B7 A8 B8] O8]
-        );
-    };
-
-    (@arities) => {};
-
-    (@arities [$n:tt $args:tt $($opt:ident)?] $([$rest_n:tt $rest_args:tt $($rest_opt:ident)?])*) => {
-        impl_fn_upcasts!(@same $args);
-        impl_fn_upcasts!(@cross_all $args [] $([$rest_n $rest_args $($rest_opt)?])*);
-        impl_fn_upcasts!(@arities $([$rest_n $rest_args $($rest_opt)?])*);
-    };
-
-    (@same []) => {
-        impl<R1, R2> UpcastFrom<Function<fn() -> R1>> for Function<fn() -> R2>
-        where
-            R2: JsGeneric + UpcastFrom<R1>,
-            R1: JsGeneric
-        {}
-    };
-
-    (@same [$($A1:ident $A2:ident)+]) => {
-        impl<R1, R2, $($A1, $A2),+> UpcastFrom<Function<fn($($A1),+) -> R1>> for Function<fn($($A2),+) -> R2>
-        where
-            R2: JsGeneric + UpcastFrom<R1>,
-            R1: JsGeneric,
-            $($A2: JsGeneric,)+
-            $($A1: JsGeneric + UpcastFrom<$A2>,)+
-        {}
-    };
-
-    // Cross-all: done
-    (@cross_all $args:tt $opts:tt) => {};
-
-    // Cross-all: process next
-    (@cross_all $args:tt [$($opts:ident)*] [$next_n:tt $next_args:tt $next_opt:ident] $([$rest_n:tt $rest_args:tt $($rest_opt:ident)?])*) => {
-        impl_fn_upcasts!(@extend $args [$($opts)* $next_opt]);
-        impl_fn_upcasts!(@shrink $args [$($opts)* $next_opt]);
-        impl_fn_upcasts!(@cross_all $args [$($opts)* $next_opt] $([$rest_n $rest_args $($rest_opt)?])*);
-    };
-
-    // Extend: 0 -> N
-    (@extend [] [$($O:ident)+]) => {
-        impl<R1, R2, $($O),+> UpcastFrom<Function<fn() -> R1>> for Function<fn($($O),+) -> R2>
-        where
-            R2: JsGeneric + UpcastFrom<R1>,
-            R1: JsGeneric,
-            $($O: JsGeneric,)+
-            $($O: UpcastFrom<Undefined>,)+
-        {}
-    };
-
-    // Extend: N -> M
-    (@extend [$($A1:ident $A2:ident)+] [$($O:ident)+]) => {
-        impl<R1, R2, $($A1, $A2,)+ $($O),+> UpcastFrom<Function<fn($($A1),+) -> R1>> for Function<fn($($A2,)+ $($O),+) -> R2>
-        where
-            R2: JsGeneric + UpcastFrom<R1>,
-            R1: JsGeneric,
-            $($A2: JsGeneric,)+
-            $($A1: JsGeneric + UpcastFrom<$A2>,)+
-            $($O: JsGeneric,)+
-            $($O: UpcastFrom<Undefined>,)+
-        {}
-    };
-
-    // Shrink: N -> 0
-    (@shrink [] [$($O:ident)+]) => {
-        impl<R1, R2, $($O),+> UpcastFrom<Function<fn($($O),+) -> R1>> for Function<fn() -> R2>
-        where
-            R2: JsGeneric + UpcastFrom<R1>,
-            R1: JsGeneric,
-            $($O: JsGeneric,)+
-            $($O: UpcastFrom<Undefined>,)+
-        {}
-    };
-
-    // Shrink: M -> N
-    (@shrink [$($A1:ident $A2:ident)+] [$($O:ident)+]) => {
-        impl<R1, R2, $($A1, $A2,)+ $($O),+> UpcastFrom<Function<fn($($A1,)+ $($O),+) -> R1>> for Function<fn($($A2),+) -> R2>
-        where
-            R2: JsGeneric + UpcastFrom<R1>,
-            R1: JsGeneric,
-            $($A2: JsGeneric,)+
-            $($A1: JsGeneric + UpcastFrom<$A2>,)+
-            $($O: JsGeneric,)+
-            $($O: UpcastFrom<Undefined>,)+
-        {}
-    };
-}
-
-impl_fn_upcasts!();
-
 #[doc(hidden)]
 /// Map closure types to their corresponding Function types
 /// matching the arity and converting () into None, while
@@ -4800,7 +4702,7 @@ impl_closure_into_function! {
     (A B C D E F G H)
 }
 
-impl Function {
+impl<F: JsFunction> Function<F> {
     /// Convert a Rust closure into a typed JavaScript Function.
     ///
     /// Type parameters are inferred from the closure's signature.
@@ -4818,9 +4720,9 @@ impl Function {
     /// _This function is marked as unstable until a solution to
     /// "canonical generic closure conversion" can be implemented._
     #[cfg(js_sys_unstable_apis)]
-    pub fn from_closure<C: ClosureIntoFunction + ?Sized>(
+    pub fn from_closure<C: ClosureIntoFunction<FuncType = F> + ?Sized>(
         closure: Closure<C>,
-    ) -> Function<<C as ClosureIntoFunction>::FuncType> {
+    ) -> Function<F> {
         closure.into_js_value().unchecked_into()
     }
 
@@ -4828,11 +4730,10 @@ impl Function {
     ///
     /// Performs a direct type-safe conversion and upcast of a closure
     /// into a corresponding typed JavaScript Function.
-    pub fn from_closure_upcast<C, F>(closure: Closure<C>) -> Function<F>
+    pub fn from_closure_upcast<C>(closure: Closure<C>) -> Function<F>
     where
         C: ?Sized + ClosureIntoFunction,
-        F: JsFunction,
-        Function<F>: UpcastFrom<Function<<C as ClosureIntoFunction>::FuncType>>,
+        F: UpcastFrom<<C as ClosureIntoFunction>::FuncType>,
     {
         closure.into_js_value().unchecked_into()
     }
@@ -5971,7 +5872,6 @@ macro_rules! number_from {
             }
         }
 
-        impl UpcastFrom<Number> for $x {}
         impl UpcastFrom<$x> for Number {}
     )*)
 }

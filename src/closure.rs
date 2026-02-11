@@ -41,7 +41,7 @@ use crate::__rt::marker::ErasableGeneric;
 use crate::__rt::marker::MaybeUnwindSafe;
 use crate::convert::*;
 use crate::describe::*;
-use crate::{JsValue, Nullable};
+use crate::JsValue;
 use core::marker::PhantomData;
 use core::panic::AssertUnwindSafe;
 
@@ -1091,28 +1091,10 @@ where
 #[doc(hidden)]
 pub unsafe trait WasmClosure: WasmDescribe {
     const IS_MUT: bool;
-    type Ret;
-    type Arg1;
-    type Arg2;
-    type Arg3;
-    type Arg4;
-    type Arg5;
-    type Arg6;
-    type Arg7;
-    type Arg8;
 }
 
 unsafe impl<T: WasmClosure> WasmClosure for AssertUnwindSafe<T> {
     const IS_MUT: bool = T::IS_MUT;
-    type Ret = T::Ret;
-    type Arg1 = T::Arg1;
-    type Arg2 = T::Arg2;
-    type Arg3 = T::Arg3;
-    type Arg4 = T::Arg4;
-    type Arg5 = T::Arg5;
-    type Arg6 = T::Arg6;
-    type Arg7 = T::Arg7;
-    type Arg8 = T::Arg8;
 }
 
 /// An internal trait for the `Closure` type.
@@ -1158,52 +1140,4 @@ pub trait UnsizeClosureRefMut<T: ?Sized> {
 
 unsafe impl<T: ?Sized + WasmClosure> ErasableGeneric for Closure<T> {
     type Repr = Closure<JsValue>;
-}
-
-/// UpcastFrom implementation for Closure respecting function type safety.
-///
-///   `R1` can be used where one returning `R2` is expected. Example: a closure
-///   returning `i32` can be used where `Number` is expected (i32 is a valid Number).
-///
-/// - **Argument types are contravariant**: If `A2: UpcastFrom<A1>`, then a closure
-///   accepting `A1` can be used where one accepting `A2` is expected. Example:
-///   a closure taking `Number` can be used where `i32` is expected (it can handle
-///   any Number, including those that are valid i32 values).
-///
-/// This prevents unsound conversions like:
-/// - `Closure<Fn(i32)>` → `Closure<Fn(Number)>` — JS might pass NaN/Infinity/floats
-/// - `Closure<Fn() -> Number>` → `Closure<Fn() -> i32>` — might return non-integers
-impl<T, U> UpcastFrom<Closure<T>> for Closure<U>
-where
-    T: WasmClosure + ?Sized,
-    U: WasmClosure + ?Sized,
-    // Return type is covariant (normal direction)
-    <U as WasmClosure>::Ret: UpcastFrom<<T as WasmClosure>::Ret>,
-    // Argument types are contravariant (reversed direction)
-    <T as WasmClosure>::Arg1: UpcastFrom<<U as WasmClosure>::Arg1>,
-    <T as WasmClosure>::Arg2: UpcastFrom<<U as WasmClosure>::Arg2>,
-    <T as WasmClosure>::Arg3: UpcastFrom<<U as WasmClosure>::Arg3>,
-    <T as WasmClosure>::Arg4: UpcastFrom<<U as WasmClosure>::Arg4>,
-    <T as WasmClosure>::Arg5: UpcastFrom<<U as WasmClosure>::Arg5>,
-    <T as WasmClosure>::Arg6: UpcastFrom<<U as WasmClosure>::Arg6>,
-    <T as WasmClosure>::Arg7: UpcastFrom<<U as WasmClosure>::Arg7>,
-    <T as WasmClosure>::Arg8: UpcastFrom<<U as WasmClosure>::Arg8>,
-{
-}
-impl<T, U> UpcastFrom<Closure<T>> for Nullable<Closure<U>>
-where
-    T: WasmClosure + ?Sized,
-    U: WasmClosure + ?Sized,
-    // Return type is covariant (normal direction)
-    <U as WasmClosure>::Ret: UpcastFrom<<T as WasmClosure>::Ret>,
-    // Argument types are contravariant (reversed direction)
-    <T as WasmClosure>::Arg1: UpcastFrom<<U as WasmClosure>::Arg1>,
-    <T as WasmClosure>::Arg2: UpcastFrom<<U as WasmClosure>::Arg2>,
-    <T as WasmClosure>::Arg3: UpcastFrom<<U as WasmClosure>::Arg3>,
-    <T as WasmClosure>::Arg4: UpcastFrom<<U as WasmClosure>::Arg4>,
-    <T as WasmClosure>::Arg5: UpcastFrom<<U as WasmClosure>::Arg5>,
-    <T as WasmClosure>::Arg6: UpcastFrom<<U as WasmClosure>::Arg6>,
-    <T as WasmClosure>::Arg7: UpcastFrom<<U as WasmClosure>::Arg7>,
-    <T as WasmClosure>::Arg8: UpcastFrom<<U as WasmClosure>::Arg8>,
-{
 }
