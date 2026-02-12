@@ -1145,6 +1145,39 @@ fn immediate_closure_to_scoped_closure() {
     assert_eq!(sum, 6); // 1 + 2 + 3
 }
 
+// Test IntoImmediateClosure trait
+#[wasm_bindgen_test]
+fn into_immediate_closure_trait() {
+    // Helper function that accepts impl IntoImmediateClosure with the new syntax
+    // The trait is parameterized by the full target type: &'a ImmediateClosure<'a, T>
+    fn call_with_closure<'a>(
+        f: impl IntoImmediateClosure<ImmediateClosure<'a, dyn FnMut(u32) -> u32>>,
+    ) -> u32 {
+        let closure = f.into_immediate_closure();
+        // In real use, this would be passed to JS. Here we just verify it compiles.
+        // We can't actually call the closure from Rust, but we can verify the conversion works.
+        let _ = &closure;
+        42
+    }
+
+    // Test with raw closure - pass &mut F directly
+    let mut func1 = |x: u32| x * 2;
+    let result = call_with_closure(&mut func1);
+    assert_eq!(result, 42);
+
+    // Test with ImmediateClosure - pass &ImmediateClosure directly
+    let mut counter = 0u32;
+    {
+        let mut func = |x: u32| {
+            counter += x;
+            counter
+        };
+        let immediate = ImmediateClosure::new(&mut func);
+        let result = call_with_closure(&immediate);
+        assert_eq!(result, 42);
+    }
+}
+
 // Test closure upcasting
 mod closure_variance {
     use super::*;

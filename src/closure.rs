@@ -784,6 +784,105 @@ impl<T: ?Sized> fmt::Debug for ImmediateClosure<'_, T> {
     }
 }
 
+/// Trait for types that can be converted into a closure wrapper.
+///
+/// This allows functions to accept either:
+/// - A closure wrapper directly (`&ImmediateClosure` or `&ScopedClosure`)
+/// - A raw closure reference (`&mut F` or `&F`)
+///
+/// The trait is parameterized by the full target type (e.g., `ImmediateClosure<'a, dyn FnMut(u32)>`
+/// or `ScopedClosure<'a, dyn FnMut(u32)>`), which provides better ergonomics when specifying bounds.
+///
+/// Note: Type inference doesn't work with this trait, so the target closure
+/// type must be explicitly annotated.
+///
+/// # Example with ImmediateClosure
+///
+/// ```ignore
+/// use wasm_bindgen::prelude::*;
+///
+/// fn call_immediate<'a>(f: impl IntoClosure<ImmediateClosure<'a, dyn FnMut(u32)>>) {
+///     let closure = f.into_closure();
+///     // use closure...
+/// }
+///
+/// // Can be called with either:
+/// call_immediate(&mut |x: u32| { /* ... */ });
+/// call_immediate(&ImmediateClosure::new(&mut |x: u32| { /* ... */ }));
+/// ```
+///
+/// # Example with ScopedClosure
+///
+/// ```ignore
+/// use wasm_bindgen::prelude::*;
+///
+/// fn call_scoped<'a>(f: impl IntoClosure<ScopedClosure<'a, dyn FnMut(u32)>>) {
+///     let closure = f.into_closure();
+///     // use closure...
+/// }
+///
+/// // Can be called with either:
+/// call_scoped(&mut |x: u32| { /* ... */ });
+/// call_scoped(&ScopedClosure::borrow_mut(&mut |x: u32| { /* ... */ }));
+/// ```
+pub trait IntoClosure<T> {
+    fn into_closure(self) -> T;
+}
+
+// &ImmediateClosure -> ImmediateClosure (copy the lightweight struct)
+impl<'a, T: ?Sized + WasmClosure> IntoClosure<ImmediateClosure<'a, T>>
+    for &'a ImmediateClosure<'a, T>
+{
+    fn into_closure(self) -> ImmediateClosure<'a, T> {
+        ImmediateClosure {
+            data: self.data,
+            unwind_safe: self.unwind_safe,
+            _marker: PhantomData,
+        }
+    }
+}
+
+// &mut F -> ImmediateClosure<dyn FnMut(...)>
+impl<'a, F, T: ?Sized + WasmClosure> IntoClosure<ImmediateClosure<'a, T>> for &'a mut F
+where
+    F: UnsizeClosureRefMut<T, Static = T> + 'a,
+{
+    fn into_closure(self) -> ImmediateClosure<'a, T> {
+        ImmediateClosure::new(self)
+    }
+}
+
+// &ScopedClosure -> ScopedClosure (clone the JsValue handle)
+impl<'a, T: ?Sized + WasmClosure> IntoClosure<ScopedClosure<'a, T>> for &'a ScopedClosure<'a, T> {
+    fn into_closure(self) -> ScopedClosure<'a, T> {
+        ScopedClosure {
+            js: self.js.clone(),
+            _marker: PhantomData,
+            _lifetime: PhantomData,
+        }
+    }
+}
+
+// &mut F -> ScopedClosure<dyn FnMut(...)>
+impl<'a, F, T: ?Sized + WasmClosure> IntoClosure<ScopedClosure<'a, T>> for &'a mut F
+where
+    F: UnsizeClosureRefMut<T, Static = T> + 'a,
+{
+    fn into_closure(self) -> ScopedClosure<'a, T> {
+        ScopedClosure::borrow_mut(self)
+    }
+}
+
+// &F -> ScopedClosure<dyn Fn(...)>
+impl<'a, F, T: ?Sized + WasmClosure> IntoClosure<ScopedClosure<'a, T>> for &'a F
+where
+    F: UnsizeClosureRef<T, Static = T> + 'a,
+{
+    fn into_closure(self) -> ScopedClosure<'a, T> {
+        ScopedClosure::borrow(self)
+    }
+}
+
 impl<'a, T: ?Sized + WasmClosure> From<&'a ImmediateClosure<'a, T>> for ScopedClosure<'a, T> {
     /// Converts an `ImmediateClosure` reference into a `ScopedClosure`.
     ///

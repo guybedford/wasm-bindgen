@@ -504,12 +504,12 @@ impl_tuple_upcast!([T1 T2 T3 T4 T5 T6 T7] [Target1 Target2 Target3 Target4 Targe
 impl_tuple_upcast!([T1 T2 T3 T4 T5 T6 T7 T8] [Target1 Target2 Target3 Target4 Target5 Target6 Target7 Target8]);
 
 /// Marker trait to indicate a callable upcast type
-pub trait AsUpcast<T: ErasableGeneric, R = <T as ErasableGeneric>::Repr>:
+pub trait JsUpcast<T: ErasableGeneric, R = <T as ErasableGeneric>::Repr>:
     Upcast<T> + ErasableGeneric<Repr = R>
 {
 }
 
-impl<S, T> AsUpcast<T> for S
+impl<S, T> JsUpcast<T> for S
 where
     S: Upcast<T> + ErasableGeneric<Repr = T::Repr>,
     T: ErasableGeneric,

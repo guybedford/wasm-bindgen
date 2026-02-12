@@ -111,7 +111,9 @@ macro_rules! externs {
 /// use wasm_bindgen::prelude::*;
 /// ```
 pub mod prelude {
-    pub use crate::closure::{Closure, ImmediateClosure, ScopedClosure, StaticClosure};
+    pub use crate::closure::{
+        Closure, ImmediateClosure, IntoClosure, ScopedClosure, StaticClosure,
+    };
     pub use crate::convert::Upcast; // provides upcast() and upcast_ref()
     pub use crate::JsCast;
     pub use crate::JsValue;
@@ -136,7 +138,7 @@ mod externref;
 use externref::__wbindgen_externref_heap_live_count;
 
 pub use crate::__rt::marker::{ErasableGeneric, Promising};
-pub use crate::convert::AsUpcast;
+pub use crate::convert::JsUpcast;
 pub use crate::convert::JsGeneric;
 
 mod cast;
