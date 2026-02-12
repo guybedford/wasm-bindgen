@@ -480,7 +480,7 @@ macro_rules! impl_fn_upcasts {
             $($O: UpcastFrom<Undefined>,)+
         {}
 
-    impl<R1, R2, $($A1, $A2,)+ $($O),+> UpcastFrom<dyn Fn($($A1,)+ $($O),+) -> R1> for dyn Fn($($A2),+) -> R2
+        impl<R1, R2, $($A1, $A2,)+ $($O),+> UpcastFrom<dyn Fn($($A1,)+ $($O),+) -> R1> for dyn Fn($($A2),+) -> R2
         where
             R2: UpcastFrom<R1>,
             $($A1: UpcastFrom<$A2>,)+  // Contravariant

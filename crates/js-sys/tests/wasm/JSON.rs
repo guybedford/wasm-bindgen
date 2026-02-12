@@ -249,7 +249,7 @@ fn stringify_with_replacer_and_space_error() {
 
     let result = JSON::stringify_with_replacer_func(
         &arr,
-        &ScopedClosure::borrow_mut(&mut |_: JsString, _: JsValue| {
+        &ImmediateClosure::new(&mut |_: JsString, _: JsValue| {
             Err(JsError::new("rust really rocks"))
         }),
         Some(4),
@@ -272,7 +272,7 @@ fn stringify_with_replacer_func_typed() {
     // Replacer function that doubles numbers
     let output: String = JSON::stringify_with_replacer_func(
         &JsValue::from(obj),
-        &ScopedClosure::borrow_mut(&mut |_: JsString, value: JsValue| {
+        &ImmediateClosure::new(&mut |_: JsString, value: JsValue| {
             if let Some(n) = value.as_f64() {
                 Ok(Some(JsValue::from(n * 2.0)))
             } else {

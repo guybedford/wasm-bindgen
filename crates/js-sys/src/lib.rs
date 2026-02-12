@@ -12830,8 +12830,8 @@ extern "C" {
     /// [MDN documentation](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)
     #[cfg(js_sys_unstable_apis)]
     #[wasm_bindgen(constructor)]
-    pub fn new<T: JsGeneric>(
-        cb: &ImmediateClosure<dyn FnMut(Function<fn(T) -> Undefined>, Function<fn(JsValue) -> Undefined>)>,
+    pub fn new<'a, T: JsGeneric>(
+        cb: &ImmediateClosure<'a, dyn FnMut(Function<fn(T) -> Undefined>, Function<fn(JsValue) -> Undefined>)>,
     ) -> Promise<T>;
 
     // Next major: deprecate
@@ -13026,9 +13026,9 @@ extern "C" {
     /// [MDN documentation](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/catch)
     #[cfg(js_sys_unstable_apis)]
     #[wasm_bindgen(method, js_name = catch)]
-    pub fn catch<T, R: Promising<Resolution = T>>(
+    pub fn catch<'a, T, R: Promising<Resolution = T>>(
         this: &Promise<T>,
-        cb: &ScopedClosure<dyn FnMut(T) -> Result<R, JsError>>,
+        cb: &ScopedClosure<'a, dyn FnMut(T) -> Result<R, JsError>>,
     ) -> Promise<T>;
 
     // Next major: deprecate
@@ -13053,9 +13053,9 @@ extern "C" {
     /// [MDN documentation](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/then)
     #[cfg(js_sys_unstable_apis)]
     #[wasm_bindgen(method, js_name = then)]
-    pub fn then<T, U: JsGeneric, R: Promising<Resolution = U>>(
+    pub fn then<'a, T, U: JsGeneric, R: Promising<Resolution = U>>(
         this: &Promise<T>,
-        cb: &ScopedClosure<dyn FnMut(T) -> Result<R, JsError>>,
+        cb: &ScopedClosure<'a, dyn FnMut(T) -> Result<R, JsError>>,
     ) -> Promise<U>;
 
     /// The `then()` method returns a `Promise`. It takes up to two arguments:
