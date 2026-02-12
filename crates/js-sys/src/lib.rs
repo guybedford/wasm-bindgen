@@ -13076,9 +13076,9 @@ extern "C" {
     ///
     /// [MDN documentation](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/then)
     #[wasm_bindgen(method, js_name = then)]
-    pub fn then_map<'a, T, U: JsGeneric, R: Promising<Resolution = U>>(
+    pub fn then_map<T, U: JsGeneric, R: Promising<Resolution = U>>(
         this: &Promise<T>,
-        cb: &ScopedClosure<'a, dyn FnMut(T) -> Result<R, JsError>>,
+        cb: &ScopedClosure<dyn FnMut(T) -> Result<R, JsError>>,
     ) -> Promise<U>;
 
     /// The `finally()` method returns a `Promise`. When the promise is settled,
