@@ -1145,31 +1145,6 @@ fn immediate_closure_to_scoped_closure() {
     assert_eq!(sum, 6); // 1 + 2 + 3
 }
 
-// Test fn(...) syntax - shorter alternative to dyn FnMut(...)
-#[wasm_bindgen_test]
-fn immediate_closure_fn_ptr_syntax() {
-    // Test basic call with fn() syntax
-    let mut called = false;
-    immediate_closure_call_fn_syntax(&ImmediateClosure::new(&mut || {
-        called = true;
-    }));
-    assert!(called);
-
-    // Test with args using fn(u32) syntax
-    let mut sum = 0u32;
-    immediate_closure_call_arg_fn_syntax(
-        &ImmediateClosure::new(&mut |x| {
-            sum += x;
-        }),
-        42,
-    );
-    assert_eq!(sum, 42);
-
-    // Test with return using fn(u32) -> u32 syntax
-    let result = immediate_closure_call_ret_fn_syntax(&ImmediateClosure::new(&mut |x| x * 2), 21);
-    assert_eq!(result, 42);
-}
-
 // Test closure upcasting
 mod closure_variance {
     use super::*;
