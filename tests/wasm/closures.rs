@@ -1197,8 +1197,8 @@ mod closure_variance {
 
     #[wasm_bindgen_test]
     fn return_covariance_fnmut() {
-        let closure: Closure<fnMut() -> i32> = Closure::new(|| 42i32);
-        let _wider: &Closure<fnMut() -> Number> = closure.upcast_ref();
+        let closure: Closure<fn() -> i32> = Closure::new(|| 42i32);
+        let _wider: &Closure<fn() -> Number> = closure.upcast_ref();
     }
 
     #[wasm_bindgen_test]
@@ -1221,8 +1221,8 @@ mod closure_variance {
 
     #[wasm_bindgen_test]
     fn arg_contravariance_fnmut() {
-        let closure: Closure<fnMut(JsValue)> = Closure::new(|_: JsValue| {});
-        let _narrower: &Closure<fnMut(Number)> = closure.upcast_ref();
+        let closure: Closure<fn(JsValue)> = Closure::new(|_: JsValue| {});
+        let _narrower: &Closure<fn(Number)> = closure.upcast_ref();
     }
 
     #[wasm_bindgen_test]
@@ -1270,8 +1270,8 @@ mod closure_variance {
 
     #[wasm_bindgen_test]
     fn arity_extend_fnmut() {
-        let closure: Closure<fnMut()> = Closure::new(|| {});
-        let _extended: &Closure<fnMut(Undefined)> = closure.upcast_ref();
+        let closure: Closure<fn()> = Closure::new(|| {});
+        let _extended: &Closure<fn(Undefined)> = closure.upcast_ref();
     }
 
     #[wasm_bindgen_test]
@@ -1302,8 +1302,8 @@ mod closure_variance {
 
     #[wasm_bindgen_test]
     fn arity_shrink_fnmut() {
-        let closure: Closure<fnMut(Undefined)> = Closure::new(|_: Undefined| {});
-        let _shrunk: &Closure<fnMut()> = closure.upcast_ref();
+        let closure: Closure<fn(Undefined)> = Closure::new(|_: Undefined| {});
+        let _shrunk: &Closure<fn()> = closure.upcast_ref();
     }
 
     #[wasm_bindgen_test]
