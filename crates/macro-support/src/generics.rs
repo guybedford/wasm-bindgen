@@ -271,7 +271,21 @@ fn strip_lifetimes(mut ty: syn::Type) -> syn::Type {
     ty
 }
 
-/// Obtain the generic parameters and their optional defaults
+/// Replace all lifetime parameters with 'static.
+/// This is used when generating concrete ABI types for extern blocks,
+/// which cannot have lifetime parameters.
+pub(crate) fn staticize_lifetimes(mut ty: syn::Type) -> syn::Type {
+    struct LifetimeStaticizer;
+    impl VisitMut for LifetimeStaticizer {
+        fn visit_lifetime_mut(&mut self, lifetime: &mut syn::Lifetime) {
+            *lifetime = syn::Lifetime::new("'static", lifetime.span());
+        }
+    }
+    LifetimeStaticizer.visit_type_mut(&mut ty);
+    ty
+}
+
+/// Obtain the generic type parameter names
 pub(crate) fn generic_param_names(generics: &syn::Generics) -> Vec<&Ident> {
     generics.type_params().map(|tp| &tp.ident).collect()
 }
@@ -279,6 +293,11 @@ pub(crate) fn generic_param_names(generics: &syn::Generics) -> Vec<&Ident> {
 /// Obtain all lifetime parameters from generics
 pub(crate) fn lifetime_params(generics: &syn::Generics) -> Vec<&syn::Lifetime> {
     generics.lifetimes().map(|lp| &lp.lifetime).collect()
+}
+
+/// Obtain both lifetime and type parameter names from generics
+pub(crate) fn all_param_names(generics: &syn::Generics) -> (Vec<&syn::Lifetime>, Vec<&Ident>) {
+    (lifetime_params(generics), generic_param_names(generics))
 }
 
 /// Helper visitor for lifetime usage detection in types
@@ -325,6 +344,10 @@ pub(crate) fn uses_generic_params(ty: &syn::Type, generic_names: &Vec<&Ident>) -
     !found_set.is_empty()
 }
 
+pub(crate) fn uses_lifetime_params(ty: &syn::Type, lifetime_params: &[&syn::Lifetime]) -> bool {
+    !used_lifetimes_in_type(ty, lifetime_params).is_empty()
+}
+
 pub(crate) fn used_generic_params<'a>(
     ty: &'a syn::Type,
     generic_names: &'a Vec<&Ident>,
@@ -346,23 +369,27 @@ pub(crate) fn generics_predicate_uses(
     !found_set.is_empty()
 }
 
-/// Concrete type replacement visitor application
+/// Concrete type replacement visitor application.
+/// Replaces generic type parameters with their concrete types (or JsValue if no default),
+/// and replaces all lifetime parameters with 'static (since extern blocks cannot have
+/// lifetime parameters).
 pub(crate) fn generic_to_concrete<'a>(
     mut ty: syn::Type,
     generic_names: &BTreeMap<&'a Ident, Option<Cow<'a, syn::Type>>>,
 ) -> Result<syn::Type, Diagnostic> {
-    if generic_names.is_empty() {
-        return Ok(ty);
+    // First, replace type parameters with their concrete types
+    if !generic_names.is_empty() {
+        let mut visitor = GenericRenameVisitor {
+            renames: generic_names,
+            err: None,
+        };
+        visitor.visit_type_mut(&mut ty);
+        if let Some(err) = visitor.err {
+            return Err(err);
+        }
     }
-    let mut visitor = GenericRenameVisitor {
-        renames: generic_names,
-        err: None,
-    };
-    visitor.visit_type_mut(&mut ty);
-    if let Some(err) = visitor.err {
-        return Err(err);
-    }
-    Ok(ty)
+    // Then, replace all lifetimes with 'static for ABI compatibility
+    Ok(staticize_lifetimes(ty))
 }
 
 #[cfg(test)]
@@ -724,6 +751,60 @@ mod tests {
         assert!(
             !found_set.contains(&ret_ident),
             "Ret should NOT be found when not in search set"
+        );
+    }
+
+    #[test]
+    fn test_staticize_lifetimes() {
+        // Test that lifetimes in types are replaced with 'static
+        let ty: syn::Type = syn::parse_quote!(ImmediateClosure<'a, dyn FnMut(T) -> R>);
+        let result = crate::generics::staticize_lifetimes(ty);
+        let expected: syn::Type = syn::parse_quote!(ImmediateClosure<'static, dyn FnMut(T) -> R>);
+        assert_eq!(
+            quote::quote!(#result).to_string(),
+            quote::quote!(#expected).to_string()
+        );
+
+        // Test multiple lifetimes
+        let ty: syn::Type = syn::parse_quote!(&'a SomeType<'b, T>);
+        let result = crate::generics::staticize_lifetimes(ty);
+        let expected: syn::Type = syn::parse_quote!(&'static SomeType<'static, T>);
+        assert_eq!(
+            quote::quote!(#result).to_string(),
+            quote::quote!(#expected).to_string()
+        );
+
+        // Test no lifetimes (should be unchanged)
+        let ty: syn::Type = syn::parse_quote!(Vec<T>);
+        let result = crate::generics::staticize_lifetimes(ty);
+        let expected: syn::Type = syn::parse_quote!(Vec<T>);
+        assert_eq!(
+            quote::quote!(#result).to_string(),
+            quote::quote!(#expected).to_string()
+        );
+    }
+
+    #[test]
+    fn test_generic_to_concrete_with_lifetimes() {
+        use std::borrow::Cow;
+        use std::collections::BTreeMap;
+
+        // Test that generic_to_concrete replaces both type params AND lifetimes
+        let t: syn::Ident = syn::parse_quote!(T);
+        let concrete: syn::Type = syn::parse_quote!(JsValue);
+        let generic_names: BTreeMap<&syn::Ident, Option<Cow<syn::Type>>> = {
+            let mut map = BTreeMap::new();
+            map.insert(&t, Some(Cow::Borrowed(&concrete)));
+            map
+        };
+
+        // ImmediateClosure<'a, dyn FnMut(T)> -> ImmediateClosure<'static, dyn FnMut(JsValue)>
+        let ty: syn::Type = syn::parse_quote!(ImmediateClosure<'a, dyn FnMut(T)>);
+        let result = crate::generics::generic_to_concrete(ty, &generic_names).unwrap();
+        let expected: syn::Type = syn::parse_quote!(ImmediateClosure<'static, dyn FnMut(JsValue)>);
+        assert_eq!(
+            quote::quote!(#result).to_string(),
+            quote::quote!(#expected).to_string()
         );
     }
 }

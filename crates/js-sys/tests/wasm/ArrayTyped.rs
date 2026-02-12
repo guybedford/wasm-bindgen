@@ -886,9 +886,9 @@ fn test_array_entries_typed() {
 fn test_from_iterable_map() {
     let source: Array<Number> = Array::of(&[Number::from(1), Number::from(2), Number::from(3)]);
 
-    let result: Array<Number> = Array::from_iterable_map(&source, &mut |val: Number, _idx: u32| {
+    let result: Array<Number> = Array::from_iterable_map(&source, &ImmediateClosure::new(&mut |val: Number, _idx: u32| {
         Ok(Number::from(val.value_of() * 2.0))
-    })
+    }))
     .unwrap();
 
     assert_eq!(result.length(), 3);

@@ -805,6 +805,38 @@ impl<'a, T: ?Sized + WasmClosure> From<&'a ImmediateClosure<'a, T>> for ScopedCl
     }
 }
 
+impl<'a, F, T: ?Sized + WasmClosure> From<&'a mut F> for ImmediateClosure<'a, T>
+where
+    F: UnsizeClosureRefMut<T, Static = T> + ?Sized,
+{
+    /// Creates an `ImmediateClosure` from a mutable closure reference.
+    ///
+    /// This enables using `.into()` to convert a closure reference:
+    ///
+    /// ```ignore
+    /// let closure: ImmediateClosure<dyn FnMut(u32)> = (&mut |x| { sum += x }).into();
+    /// ```
+    fn from(f: &'a mut F) -> Self {
+        ImmediateClosure::new(f)
+    }
+}
+
+impl<'a, F, T: ?Sized + WasmClosure> From<&'a F> for ImmediateClosure<'a, T>
+where
+    F: UnsizeClosureRef<T, Static = T> + ?Sized,
+{
+    /// Creates an `ImmediateClosure` from an immutable closure reference.
+    ///
+    /// This enables using `.into()` to convert a closure reference:
+    ///
+    /// ```ignore
+    /// let closure: ImmediateClosure<dyn Fn(u32)> = (&|x| { println!("{}", x) }).into();
+    /// ```
+    fn from(f: &'a F) -> Self {
+        ImmediateClosure::new_immutable(f)
+    }
+}
+
 /// A trait for converting an `FnOnce(A...) -> R` into a `FnMut(A...) -> R` that
 /// will throw if ever called more than once.
 #[doc(hidden)]
@@ -1145,4 +1177,8 @@ pub trait UnsizeClosureRefMut<T: ?Sized> {
 
 unsafe impl<T: ?Sized + WasmClosure> ErasableGeneric for Closure<T> {
     type Repr = Closure<JsValue>;
+}
+
+unsafe impl<T: ?Sized + WasmClosure> ErasableGeneric for ImmediateClosure<'_, T> {
+    type Repr = ImmediateClosure<'static, JsValue>;
 }

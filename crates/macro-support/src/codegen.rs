@@ -1562,7 +1562,8 @@ impl TryToTokens for ast::ImportFunction {
         let mut arguments = Vec::new();
 
         let mut fn_class_generics = self.get_fn_generics()?;
-        let fn_generic_param_names = generics::generic_param_names(&self.generics);
+        let (fn_lifetime_param_names, fn_generic_param_names) =
+            generics::all_param_names(&self.generics);
 
         let ret_ident = Ident::new("_ret", Span::call_site());
         let wasm_bindgen = &self.wasm_bindgen;
@@ -1596,7 +1597,9 @@ impl TryToTokens for ast::ImportFunction {
             let abi_ty;
             let convert_arg;
 
-            if generics::uses_generic_params(ty, &fn_generic_param_names) {
+            if generics::uses_generic_params(ty, &fn_generic_param_names)
+                || generics::uses_lifetime_params(ty, &fn_lifetime_param_names)
+            {
                 let (inner_ty, ref_mut, ref_lifetime) =
                     if let syn::Type::Reference(syn::TypeReference {
                         elem,
@@ -1709,7 +1712,9 @@ impl TryToTokens for ast::ImportFunction {
                 } else {
                     original_ty
                 };
-                if generics::uses_generic_params(ty, &fn_generic_param_names) {
+                if generics::uses_generic_params(ty, &fn_generic_param_names)
+                    || generics::uses_lifetime_params(ty, &fn_lifetime_param_names)
+                {
                     let concrete_ty =
                         generic_to_concrete(ty.clone(), &fn_class_generics.concrete_defaults)?;
                     fn_class_generics.add_fn_bound(
