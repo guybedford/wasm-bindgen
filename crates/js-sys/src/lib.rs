@@ -12831,7 +12831,7 @@ extern "C" {
     #[cfg(js_sys_unstable_apis)]
     #[wasm_bindgen(constructor)]
     pub fn new<T: JsGeneric>(
-        cb: &mut dyn FnMut(Function<fn(T) -> Undefined>, Function<fn(JsValue) -> Undefined>),
+        cb: &ImmediateClosure<dyn FnMut(Function<fn(T) -> Undefined>, Function<fn(JsValue) -> Undefined>)>,
     ) -> Promise<T>;
 
     // Next major: deprecate
