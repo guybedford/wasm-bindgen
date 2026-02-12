@@ -85,7 +85,7 @@ pub(crate) enum WbgType<'a> {
         immutable: bool,
     },
 
-    Nullable(Box<WbgType<'a>>),
+    JsOption(Box<WbgType<'a>>),
     FrozenArray(Box<WbgType<'a>>),
     ObservableArray(Box<WbgType<'a>>),
     Sequence(Box<WbgType<'a>>),
@@ -260,7 +260,7 @@ impl<'a, T: ToWbgType<'a>> ToWbgType<'a> for MayBeNull<T> {
     fn to_wbg_type(&self, record: &FirstPassRecord<'a>) -> WbgType<'a> {
         let inner_wbg_type = self.type_.to_wbg_type(record);
         if self.q_mark.is_some() {
-            WbgType::Nullable(Box::new(inner_wbg_type))
+            WbgType::JsOption(Box::new(inner_wbg_type))
         } else {
             inner_wbg_type
         }
@@ -586,7 +586,7 @@ impl<'a> WbgType<'a> {
 
             WbgType::UnknownIdentifier(name) => dst.push_str(&snake_case_ident(name)),
 
-            WbgType::Nullable(wbg_type) => {
+            WbgType::JsOption(wbg_type) => {
                 dst.push_str("opt_");
                 wbg_type.push_snake_case_name(dst);
             }
@@ -848,7 +848,7 @@ impl<'a> WbgType<'a> {
 
             WbgType::ArrayBufferView { .. } | WbgType::BufferSource { .. } => Ok(js_sys("Object")),
 
-            WbgType::Nullable(wbg_type) => {
+            WbgType::JsOption(wbg_type) => {
                 let inner = wbg_type.to_syn_type(pos, legacy, no_generics)?;
 
                 match inner {
@@ -1090,11 +1090,11 @@ impl<'a> WbgType<'a> {
     /// [flattened union member types]: https://heycam.github.io/webidl/#dfn-flattened-union-member-types
     pub(crate) fn flatten(&self, attrs: Option<&ExtendedAttributeList<'_>>) -> Vec<Self> {
         match self {
-            WbgType::Nullable(wbg_type) => wbg_type
+            WbgType::JsOption(wbg_type) => wbg_type
                 .flatten(attrs)
                 .into_iter()
                 .map(Box::new)
-                .map(WbgType::Nullable)
+                .map(WbgType::JsOption)
                 .collect(),
             WbgType::FrozenArray(wbg_type) => wbg_type
                 .flatten(attrs)
@@ -1477,7 +1477,7 @@ fn wbg_type_flatten_test() {
                 Sequence(Box::new(Long),),
                 WbgType::id("Event", Interface("Event"))
             ]),
-            Nullable(Box::new(Union(vec![
+            JsOption(Box::new(Union(vec![
                 WbgType::id("XMLHttpRequest", Interface("XMLHttpRequest")),
                 DomString,
             ])),),
@@ -1491,11 +1491,11 @@ fn wbg_type_flatten_test() {
             WbgType::id("Node", Interface("Node")),
             Sequence(Box::new(Long)),
             WbgType::id("Event", Interface("Event")),
-            Nullable(Box::new(WbgType::id(
+            JsOption(Box::new(WbgType::id(
                 "XMLHttpRequest",
                 Interface("XMLHttpRequest")
             ))),
-            Nullable(Box::new(DomString)),
+            JsOption(Box::new(DomString)),
             Sequence(Box::new(Sequence(Box::new(Double)))),
             Sequence(Box::new(WbgType::id("NodeList", Interface("NodeList")))),
         ],

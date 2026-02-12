@@ -66,7 +66,7 @@ fn one_method_with_an_undefined_import_doesnt_break_all_other_methods() {
 
 #[wasm_bindgen_test]
 fn nullable_method() {
-    let f = NullableMethod::new().unwrap();
+    let f = JsOptionMethod::new().unwrap();
     assert!(f.opt(Some(15)) == Some(16));
     assert!(f.opt(None).is_none());
 }

@@ -536,12 +536,12 @@ impl<'src> FirstPassRecord<'src> {
                 // All indexing getters should return optional values (or
                 // otherwise be marked with catch).
                 match ret_ty {
-                    WbgType::Nullable(_) => ret_ty,
+                    WbgType::JsOption(_) => ret_ty,
                     ref ty => {
                         if catch {
                             ret_ty
                         } else {
-                            WbgType::Nullable(Box::new(ty.clone()))
+                            WbgType::JsOption(Box::new(ty.clone()))
                         }
                     }
                 }
@@ -831,7 +831,7 @@ fn arg_throws(ty: &WbgType<'_>) -> bool {
                 | IdentifierType::Float64Slice { allow_shared, .. },
             ..
         } => !allow_shared,
-        WbgType::Nullable(item) => arg_throws(item),
+        WbgType::JsOption(item) => arg_throws(item),
         WbgType::Union(list) => list.iter().any(arg_throws),
         // catch-all for everything else like Object
         _ => false,
@@ -885,7 +885,7 @@ fn flag_slices_immutable(ty: &mut WbgType) {
             ty: IdentifierType::AllowSharedBufferSource { immutable },
             ..
         } => *immutable = true,
-        WbgType::Nullable(item) => flag_slices_immutable(item),
+        WbgType::JsOption(item) => flag_slices_immutable(item),
         WbgType::Union(list) => {
             for item in list {
                 flag_slices_immutable(item);
@@ -910,7 +910,7 @@ fn flag_slices_allow_shared(ty: &mut WbgType) {
         | WbgType::Float64Array { allow_shared, .. }
         | WbgType::ArrayBufferView { allow_shared, .. }
         | WbgType::BufferSource { allow_shared, .. } => *allow_shared = true,
-        WbgType::Nullable(item) => flag_slices_allow_shared(item),
+        WbgType::JsOption(item) => flag_slices_allow_shared(item),
         WbgType::FrozenArray(item) => flag_slices_allow_shared(item),
         WbgType::Sequence(item) => flag_slices_allow_shared(item),
         WbgType::ObservableArray(item) => flag_slices_allow_shared(item),

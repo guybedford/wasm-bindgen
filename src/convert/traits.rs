@@ -3,7 +3,7 @@ use core::ops::{Deref, DerefMut};
 use core::panic::AssertUnwindSafe;
 
 use crate::describe::*;
-use crate::{ErasableGeneric, JsValue, Nullable};
+use crate::{ErasableGeneric, JsOption, JsValue};
 
 /// A trait for anything that can be converted into a type that can cross the
 /// Wasm ABI directly, eg `u32` or `f64`.
@@ -471,10 +471,10 @@ where
 
 // Reference impls using UpcastFrom
 impl<'a, T, Target> UpcastFrom<&'a mut T> for &'a mut Target where Target: UpcastFrom<T> {}
-impl<'a, T, Target> UpcastFrom<&'a mut T> for Nullable<&'a mut Target> where Target: UpcastFrom<T> {}
+impl<'a, T, Target> UpcastFrom<&'a mut T> for JsOption<&'a mut Target> where Target: UpcastFrom<T> {}
 
 impl<'a, T, Target> UpcastFrom<&'a T> for &'a Target where Target: UpcastFrom<T> {}
-impl<'a, T, Target> UpcastFrom<&'a T> for Nullable<&'a Target> where Target: UpcastFrom<T> {}
+impl<'a, T, Target> UpcastFrom<&'a T> for JsOption<&'a Target> where Target: UpcastFrom<T> {}
 
 // Tuple upcasts with structural covariance
 macro_rules! impl_tuple_upcast {
@@ -486,7 +486,7 @@ macro_rules! impl_tuple_upcast {
             $($T: JsGeneric,)+
         {
         }
-        impl<$($T,)+ $($Target,)+> UpcastFrom<($($T,)+)> for Nullable<($($Target,)+)>
+        impl<$($T,)+ $($Target,)+> UpcastFrom<($($T,)+)> for JsOption<($($Target,)+)>
         where
             $($Target: JsGeneric + UpcastFrom<$T>,)+
             $($T: JsGeneric,)+

@@ -1145,15 +1145,15 @@ fn immediate_closure_to_scoped_closure() {
     assert_eq!(sum, 6); // 1 + 2 + 3
 }
 
-// Test IntoImmediateClosure trait
+// Test ClosureArg trait
 #[wasm_bindgen_test]
-fn into_immediate_closure_trait() {
-    // Helper function that accepts impl IntoImmediateClosure with the new syntax
-    // The trait is parameterized by the full target type: &'a ImmediateClosure<'a, T>
+fn closure_arg_trait() {
+    // Helper function that accepts impl ClosureArg
+    // The trait is parameterized by the ABI type for macro pattern matching
     fn call_with_closure<'a>(
-        f: impl IntoImmediateClosure<ImmediateClosure<'a, dyn FnMut(u32) -> u32>>,
+        f: impl ClosureArg<ImmediateClosure<'a, dyn FnMut(u32) -> u32>>,
     ) -> u32 {
-        let closure = f.into_immediate_closure();
+        let closure = f.into_closure();
         // In real use, this would be passed to JS. Here we just verify it compiles.
         // We can't actually call the closure from Rust, but we can verify the conversion works.
         let _ = &closure;

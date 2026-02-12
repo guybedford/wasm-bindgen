@@ -520,7 +520,7 @@ impl<'src> FirstPassRecord<'src> {
         let wbg_type = field.type_.to_wbg_type(self);
 
         let is_js_value_ref_option_type = match &wbg_type {
-            wbg_type::WbgType::Nullable(ty) => match **ty {
+            wbg_type::WbgType::JsOption(ty) => match **ty {
                 wbg_type::WbgType::Any => true,
                 WbgType::FrozenArray(ref _wbg_type) | WbgType::Sequence(ref _wbg_type) => true,
                 wbg_type::WbgType::Union(ref types) => !types.iter().all(|wbg_type| {

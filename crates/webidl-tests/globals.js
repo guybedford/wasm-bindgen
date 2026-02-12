@@ -371,7 +371,7 @@ global.UndefinedMethod = class UndefinedMethod {
   }
 };
 
-global.NullableMethod = class NullableMethod {
+global.JsOptionMethod = class JsOptionMethod {
   constructor() { }
   opt(a) {
     if (a == undefined) {

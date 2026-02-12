@@ -33,7 +33,7 @@ exports.take_nullable_string = (val) => {
 };
 
 exports.test_nullable_exports = () => {
-    // Test rust functions that return Nullable
+    // Test rust functions that return JsOption
     const nullVal = wasm.rust_return_nullable_null();
     assert.ok(nullVal === null || nullVal === undefined,
         `expected null or undefined from rust_return_nullable_null, got ${nullVal}`);
@@ -43,7 +43,7 @@ exports.test_nullable_exports = () => {
         `expected a value from rust_return_nullable_value, got ${numVal}`);
     assert.strictEqual(numVal, 456);
 
-    // Test rust functions that take Nullable
+    // Test rust functions that take JsOption
     wasm.rust_take_nullable_null(null);
     wasm.rust_take_nullable_null(undefined);
     wasm.rust_take_nullable_value(789);

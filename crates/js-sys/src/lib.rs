@@ -46,7 +46,7 @@ use core::str::FromStr;
 pub use wasm_bindgen;
 use wasm_bindgen::closure::WasmClosure;
 use wasm_bindgen::convert::{FromWasmAbi, IntoWasmAbi, UpcastFrom};
-use wasm_bindgen::{prelude::*, JsError, JsGeneric, Nullable, Promising, Undefined};
+use wasm_bindgen::{prelude::*, JsError, JsGeneric, JsOption, Promising, Undefined};
 
 // When adding new imports:
 //
@@ -1729,7 +1729,7 @@ macro_rules! impl_tuple_covariance {
         impl<$($T,)+> UpcastFrom<ArrayTuple<($($T,)+)>> for JsValue
         {
         }
-        impl<$($T,)+> UpcastFrom<ArrayTuple<($($T,)+)>> for Nullable<JsValue>
+        impl<$($T,)+> UpcastFrom<ArrayTuple<($($T,)+)>> for JsOption<JsValue>
         {
         }
         // ArrayTuple -> Array
@@ -1740,13 +1740,13 @@ macro_rules! impl_tuple_covariance {
             $(Target: UpcastFrom<$T>,)+
         {
         }
-        impl<$($T,)+ Target> UpcastFrom<ArrayTuple<($($T,)+)>> for Nullable<Array<Target>>
+        impl<$($T,)+ Target> UpcastFrom<ArrayTuple<($($T,)+)>> for JsOption<Array<Target>>
         where
             $(Target: UpcastFrom<$T>,)+
         {}
         // Array<T> -> ArrayTuple<T, ...>
         impl<T> UpcastFrom<Array<T>> for ArrayTuple<($($Ts,)+)> {}
-        impl<T: JsGeneric> UpcastFrom<Array<T>> for ArrayTuple<($(Nullable<$Ts>,)+)> {}
+        impl<T: JsGeneric> UpcastFrom<Array<T>> for ArrayTuple<($(JsOption<$Ts>,)+)> {}
     };
 }
 
@@ -4350,9 +4350,9 @@ extern "C" {
 
 // Basic UpcastFrom impls for Function<T>
 impl<T: JsFunction> UpcastFrom<Function<T>> for JsValue {}
-impl<T: JsFunction> UpcastFrom<Function<T>> for Nullable<JsValue> {}
+impl<T: JsFunction> UpcastFrom<Function<T>> for JsOption<JsValue> {}
 impl<T: JsFunction> UpcastFrom<Function<T>> for Object {}
-impl<T: JsFunction> UpcastFrom<Function<T>> for Nullable<Object> {}
+impl<T: JsFunction> UpcastFrom<Function<T>> for JsOption<Object> {}
 
 // Blanket trait for Function upcast
 // Function<T> upcasts to Function<U> when the underlying fn type T upcasts to U.

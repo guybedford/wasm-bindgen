@@ -13,7 +13,7 @@ use crate::convert::{
     UpcastFrom, VectorFromWasmAbi, VectorIntoWasmAbi, WasmAbi,
 };
 use crate::describe::*;
-use crate::{JsValue, Nullable};
+use crate::{JsOption, JsValue};
 
 use cfg_if::cfg_if;
 
@@ -407,17 +407,17 @@ unsafe impl<T: ErasableGeneric> ErasableGeneric for Box<[T]> {
 }
 
 impl UpcastFrom<&str> for &str {}
-impl UpcastFrom<&str> for Nullable<&str> {}
+impl UpcastFrom<&str> for JsOption<&str> {}
 
 impl<T, Target> UpcastFrom<Box<[T]>> for Box<[Target]> where Target: UpcastFrom<T> {}
-impl<T, Target> UpcastFrom<Box<[T]>> for Nullable<Box<[Target]>> where Target: UpcastFrom<T> {}
+impl<T, Target> UpcastFrom<Box<[T]>> for JsOption<Box<[Target]>> where Target: UpcastFrom<T> {}
 
 unsafe impl<T: ErasableGeneric> ErasableGeneric for Vec<T> {
     type Repr = Vec<T::Repr>;
 }
 
 impl<T, Target> UpcastFrom<Vec<T>> for Vec<Target> where Target: UpcastFrom<T> {}
-impl<T, Target> UpcastFrom<Vec<T>> for Nullable<Vec<Target>> where Target: UpcastFrom<T> {}
+impl<T, Target> UpcastFrom<Vec<T>> for JsOption<Vec<Target>> where Target: UpcastFrom<T> {}
 
 impl<T: VectorIntoWasmAbi> IntoWasmAbi for Box<[T]> {
     type Abi = <T as VectorIntoWasmAbi>::Abi;
@@ -487,7 +487,7 @@ unsafe impl<'a, T: ErasableGeneric> ErasableGeneric for &'a [T] {
 }
 
 impl<'a, T, Target> UpcastFrom<&'a [T]> for &'a [Target] where Target: UpcastFrom<T> {}
-impl<'a, T, Target> UpcastFrom<&'a [T]> for Nullable<&'a [Target]> where Target: UpcastFrom<T> {}
+impl<'a, T, Target> UpcastFrom<&'a [T]> for JsOption<&'a [Target]> where Target: UpcastFrom<T> {}
 
 impl<T: ErasableGeneric<Repr = JsValue> + WasmDescribe> IntoWasmAbi for &[T] {
     type Abi = WasmSlice;

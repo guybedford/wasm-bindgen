@@ -1307,7 +1307,7 @@ impl TryToTokens for ast::ImportType {
             })
             .to_tokens(tokens);
 
-            // 2. For non-generic types: generate identity upcast (UpcastFrom<Self> for Self, UpcastFrom<Self> for Nullable<Self>)
+            // 2. For non-generic types: generate identity upcast (UpcastFrom<Self> for Self, UpcastFrom<Self> for JsOption<Self>)
             // 3. For generic types: generate structural covariance
             let type_params: Vec<_> = self.generics.type_params().collect();
             if type_params.is_empty() {
@@ -1321,7 +1321,7 @@ impl TryToTokens for ast::ImportType {
                     }
                     #[automatically_derived]
                     impl #impl_generics #wasm_bindgen::convert::UpcastFrom<#rust_name>
-                        for #wasm_bindgen::Nullable<#rust_name>
+                        for #wasm_bindgen::JsOption<#rust_name>
                     #where_clause
                     {
                     }
@@ -1374,7 +1374,7 @@ impl TryToTokens for ast::ImportType {
                     }
                     #[automatically_derived]
                     impl #impl_generics_split #wasm_bindgen::convert::UpcastFrom<#rust_name #ty_generics>
-                        for #wasm_bindgen::Nullable<#rust_name<#(#target_param_names),*>>
+                        for #wasm_bindgen::JsOption<#rust_name<#(#target_param_names),*>>
                     #where_clause_extended
                     {
                     }
@@ -1393,7 +1393,7 @@ impl TryToTokens for ast::ImportType {
                     }
                     #[automatically_derived]
                     impl #impl_generics #wasm_bindgen::convert::UpcastFrom<#rust_name #ty_generics>
-                        for #wasm_bindgen::Nullable<#superclass>
+                        for #wasm_bindgen::JsOption<#superclass>
                     #where_clause
                     {
                     }

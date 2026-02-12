@@ -50,7 +50,7 @@ The `js-sys` crate provides generic versions of JavaScript built-in types, inclu
 * `WeakSet<T>`: Typed weak sets.
 * `WeakRef<T>`: Typed weak refs.
 * `Promise<T>`: Typed promises.
-* `Nullable<T>`: A value that may be `T`, `null`, or `undefined`.
+* `JsOption<T>`: A value that may be `T`, `null`, or `undefined`.
 
 All of the above types default to the non-generic form of `JsValue` parameters when generic parameters are unspecified.
 
@@ -73,21 +73,21 @@ set.add(&JsString::from("value"));
 let promise: Promise<Number> = Promise::resolve(&Number::from(42));
 ```
 
-### Nullable Types
+### JsOption Types
 
-`Nullable<T>` represents a JS value that may be `T`, `null`, or `undefined`. Unlike `Option<T>`, which is a Rust-side construct that is resolved at the ABI boundary, `Nullable<T>` keeps the value in JS until explicitly inspected.
+`JsOption<T>` represents a JS value that may be `T`, `null`, or `undefined`. Unlike `Option<T>`, which is a Rust-side construct that is resolved at the ABI boundary, `JsOption<T>` keeps the value in JS until explicitly inspected.
 
 ```rust
-use wasm_bindgen::Nullable;
+use wasm_bindgen::JsOption;
 use js_sys::{Number, JsString};
 
 #[wasm_bindgen]
 extern "C" {
     // Returns a number that might be null
-    fn maybe_get_value() -> Nullable<Number>;
+    fn maybe_get_value() -> JsOption<Number>;
     
     // Accepts an optional string parameter
-    fn set_label(label: Nullable<JsString>);
+    fn set_label(label: JsOption<JsString>);
 }
 
 // Check if the value is empty (null or undefined)
@@ -105,8 +105,8 @@ match value.into_option() {
 }
 
 // Create nullable values
-let with_value = Nullable::wrap(JsString::from("hello"));
-let empty: Nullable<JsString> = Nullable::new();
+let with_value = JsOption::wrap(JsString::from("hello"));
+let empty: JsOption<JsString> = JsOption::new();
 
 // Unwrap methods (like Option)
 let value = maybe_get_value();
@@ -117,26 +117,26 @@ let num = value.unwrap_or_else(|| Number::from(0)); // compute default if null
 
 // Convert from Option
 let opt: Option<Number> = Some(Number::from(42));
-let nullable = Nullable::from_option(opt);
+let nullable = JsOption::from_option(opt);
 ```
 
-**When to use `Nullable<T>` vs `Option<T>`:**
+**When to use `JsOption<T>` vs `Option<T>`:**
 
 | Type | Use case |
 |------|----------|
 | `Option<T>` | When you want Rust to handle the null check at the ABI boundary. The value is immediately converted to `Some(T)` or `None`. |
-| `Nullable<T>` | When you want to defer the null check, pass nullable values through generics, or preserve the JS null semantics. |
+| `JsOption<T>` | When you want to defer the null check, pass nullable values through generics, or preserve the JS null semantics. |
 
-`Nullable<T>` itself implements `JsGeneric`, so it can be used in all generic positions that accept JS types:
+`JsOption<T>` itself implements `JsGeneric`, so it can be used in all generic positions that accept JS types:
 
 ```rust
-// Nullable values in collections
-let arr: Array<Nullable<Number>> = Array::new_typed();
-arr.push(&Nullable::wrap(Number::from(42)));
-arr.push(&Nullable::new());
+// JsOption values in collections
+let arr: Array<JsOption<Number>> = Array::new_typed();
+arr.push(&JsOption::wrap(Number::from(42)));
+arr.push(&JsOption::new());
 
-// Nullable in promises
-let promise: Promise<Nullable<JsString>> = get_optional_string();
+// JsOption in promises
+let promise: Promise<JsOption<JsString>> = get_optional_string();
 ```
 
 ### Function Type Aliases
@@ -303,7 +303,7 @@ The `JsGeneric` trait is a shorthand for `ErasableGeneric<Repr = JsValue>`. This
 * All js-sys types: `Object`, `Array`, `Function`, `Promise`, `Map`, `Set`, etc.
 * JS primitives: `JsValue`, `Number`, `BigInt`, `Boolean`, `JsString`, `Symbol`
 * JS special values: `Undefined`, `Null`
-* Wrapper types: `Nullable<T>` (for any `T: JsGeneric`)
+* Wrapper types: `JsOption<T>` (for any `T: JsGeneric`)
 * All web-sys generated types
 * Custom types imported via `#[wasm_bindgen]`
 

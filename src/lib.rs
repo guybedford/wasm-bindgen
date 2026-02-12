@@ -111,9 +111,7 @@ macro_rules! externs {
 /// use wasm_bindgen::prelude::*;
 /// ```
 pub mod prelude {
-    pub use crate::closure::{
-        Closure, ImmediateClosure, IntoClosure, ScopedClosure, StaticClosure,
-    };
+    pub use crate::closure::{Closure, ClosureArg, ImmediateClosure, ScopedClosure, StaticClosure};
     pub use crate::convert::Upcast; // provides upcast() and upcast_ref()
     pub use crate::JsCast;
     pub use crate::JsValue;
@@ -138,8 +136,8 @@ mod externref;
 use externref::__wbindgen_externref_heap_live_count;
 
 pub use crate::__rt::marker::{ErasableGeneric, Promising};
-pub use crate::convert::JsUpcast;
 pub use crate::convert::JsGeneric;
+pub use crate::convert::JsUpcast;
 
 mod cast;
 pub use crate::cast::JsCast;
@@ -1264,7 +1262,7 @@ impl UpcastFrom<Null> for JsValue {}
 extern "C" {
     /// A nullable JS value of type `T`.
     ///
-    /// Unlike `Option<T>`, which is a Rust-side construct, `Nullable<T>` represents
+    /// Unlike `Option<T>`, which is a Rust-side construct, `JsOption<T>` represents
     /// a JS value that may be `T`, `null`, or `undefined`, where the null status is
     /// not yet known in Rust. The value remains in JS until inspected via methods
     /// like [`is_empty`](Self::is_empty), [`as_option`](Self::as_option), or
@@ -1272,29 +1270,29 @@ extern "C" {
     ///
     /// `T` must implement [`JsGeneric`], meaning it is any type that can be
     /// represented as a `JsValue` (e.g., `JsString`, `Number`, `Object`, etc.).
-    /// `Nullable<T>` itself implements `JsGeneric`, so it can be used in all
+    /// `JsOption<T>` itself implements `JsGeneric`, so it can be used in all
     /// generic positions that accept JS types.
     #[wasm_bindgen(typescript_type = "any", no_upcast)]
     #[derive(Clone, PartialEq)]
-    pub type Nullable<T>;
+    pub type JsOption<T>;
 }
 
-impl<T: JsGeneric> Nullable<T> {
-    /// Creates an empty `Nullable<T>` representing `null`.
+impl<T: JsGeneric> JsOption<T> {
+    /// Creates an empty `JsOption<T>` representing `null`.
     #[inline]
     pub fn new() -> Self {
         Null::NULL.unchecked_into()
     }
 
-    /// Wraps a value in a `Nullable<T>`.
+    /// Wraps a value in a `JsOption<T>`.
     #[inline]
     pub fn wrap(val: T) -> Self {
         unsafe { core::mem::transmute_copy(&ManuallyDrop::new(val)) }
     }
 
-    /// Creates a `Nullable<T>` from an `Option<T>`.
+    /// Creates a `JsOption<T>` from an `Option<T>`.
     ///
-    /// Returns `Nullable::wrap(val)` if `Some(val)`, otherwise `Nullable::new()`.
+    /// Returns `JsOption::wrap(val)` if `Some(val)`, otherwise `JsOption::new()`.
     #[inline]
     pub fn from_option(opt: Option<T>) -> Self {
         match opt {
@@ -1303,13 +1301,13 @@ impl<T: JsGeneric> Nullable<T> {
         }
     }
 
-    /// Tests whether this `Nullable<T>` is empty (`null` or `undefined`).
+    /// Tests whether this `JsOption<T>` is empty (`null` or `undefined`).
     #[inline]
     pub fn is_empty(&self) -> bool {
         JsValue::is_null_or_undefined(self)
     }
 
-    /// Converts this `Nullable<T>` to an `Option<T>` by cloning the inner value.
+    /// Converts this `JsOption<T>` to an `Option<T>` by cloning the inner value.
     ///
     /// Returns `None` if the value is `null` or `undefined`, otherwise returns
     /// `Some(T)` with a clone of the contained value.
@@ -1323,7 +1321,7 @@ impl<T: JsGeneric> Nullable<T> {
         }
     }
 
-    /// Converts this `Nullable<T>` into an `Option<T>`, consuming `self`.
+    /// Converts this `JsOption<T>` into an `Option<T>`, consuming `self`.
     ///
     /// Returns `None` if the value is `null` or `undefined`, otherwise returns
     /// `Some(T)` with the contained value.
@@ -1343,7 +1341,7 @@ impl<T: JsGeneric> Nullable<T> {
     /// Panics if the value is `null` or `undefined`.
     #[inline]
     pub fn unwrap(self) -> T {
-        self.expect("called `Nullable::unwrap()` on an empty value")
+        self.expect("called `JsOption::unwrap()` on an empty value")
     }
 
     /// Returns the contained value, consuming `self`.
@@ -1385,13 +1383,13 @@ impl<T: JsGeneric> Nullable<T> {
     }
 }
 
-impl<T: JsGeneric> Default for Nullable<T> {
+impl<T: JsGeneric> Default for JsOption<T> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<T: JsGeneric + fmt::Debug> fmt::Debug for Nullable<T> {
+impl<T: JsGeneric + fmt::Debug> fmt::Debug for JsOption<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}?(", core::any::type_name::<T>())?;
         match self.as_option() {
@@ -1401,7 +1399,7 @@ impl<T: JsGeneric + fmt::Debug> fmt::Debug for Nullable<T> {
         f.write_str(")")
     }
 }
-impl<T: JsGeneric + fmt::Display> fmt::Display for Nullable<T> {
+impl<T: JsGeneric + fmt::Display> fmt::Display for JsOption<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}?(", core::any::type_name::<T>())?;
         match self.as_option() {
@@ -1412,13 +1410,13 @@ impl<T: JsGeneric + fmt::Display> fmt::Display for Nullable<T> {
     }
 }
 
-// Nullable upcast impls
-impl UpcastFrom<JsValue> for Nullable<JsValue> {}
-impl<T> UpcastFrom<Undefined> for Nullable<T> {}
-impl<T> UpcastFrom<Null> for Nullable<T> {}
-impl<T> UpcastFrom<()> for Nullable<T> {}
-impl<T> UpcastFrom<Nullable<T>> for JsValue {}
-impl<T, U> UpcastFrom<Nullable<U>> for Nullable<T> where T: UpcastFrom<U> {}
+// JsOption upcast impls
+impl UpcastFrom<JsValue> for JsOption<JsValue> {}
+impl<T> UpcastFrom<Undefined> for JsOption<T> {}
+impl<T> UpcastFrom<Null> for JsOption<T> {}
+impl<T> UpcastFrom<()> for JsOption<T> {}
+impl<T> UpcastFrom<JsOption<T>> for JsValue {}
+impl<T, U> UpcastFrom<JsOption<U>> for JsOption<T> where T: UpcastFrom<U> {}
 
 // Intrinsics that are simply JS function bindings and can be self-hosted via the macro.
 #[wasm_bindgen_macro::wasm_bindgen(wasm_bindgen = crate)]

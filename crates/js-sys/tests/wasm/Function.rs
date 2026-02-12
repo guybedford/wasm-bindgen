@@ -5,7 +5,7 @@ use wasm_bindgen::JsCast;
 #[cfg(js_sys_unstable_apis)]
 use wasm_bindgen::JsGeneric;
 #[cfg(js_sys_unstable_apis)]
-use wasm_bindgen::Nullable;
+use wasm_bindgen::JsOption;
 use wasm_bindgen::Undefined;
 use wasm_bindgen_test::*;
 
@@ -61,14 +61,14 @@ extern "C" {
     #[cfg(js_sys_unstable_apis)]
     fn list() -> Function<
         fn(
-            Nullable<Number>,
-            Nullable<Number>,
-            Nullable<Number>,
-            Nullable<Number>,
-            Nullable<Number>,
-            Nullable<Number>,
-            Nullable<Number>,
-            Nullable<Number>,
+            JsOption<Number>,
+            JsOption<Number>,
+            JsOption<Number>,
+            JsOption<Number>,
+            JsOption<Number>,
+            JsOption<Number>,
+            JsOption<Number>,
+            JsOption<Number>,
         ) -> Array<Number>,
     >;
     #[cfg(not(js_sys_unstable_apis))]
@@ -95,14 +95,14 @@ extern "C" {
     #[cfg(js_sys_unstable_apis)]
     fn sum_many_arguments() -> Function<
         fn(
-            Nullable<Number>,
-            Nullable<Number>,
-            Nullable<Number>,
-            Nullable<Number>,
-            Nullable<Number>,
-            Nullable<Number>,
-            Nullable<Number>,
-            Nullable<Number>,
+            JsOption<Number>,
+            JsOption<Number>,
+            JsOption<Number>,
+            JsOption<Number>,
+            JsOption<Number>,
+            JsOption<Number>,
+            JsOption<Number>,
+            JsOption<Number>,
         ) -> Number,
     >;
     fn test_context() -> JsValue;
@@ -111,14 +111,14 @@ extern "C" {
     #[cfg(js_sys_unstable_apis)]
     fn multiply_sum() -> Function<
         fn(
-            Nullable<Number>,
-            Nullable<Number>,
-            Nullable<Number>,
-            Nullable<Number>,
-            Nullable<Number>,
-            Nullable<Number>,
-            Nullable<Number>,
-            Nullable<Number>,
+            JsOption<Number>,
+            JsOption<Number>,
+            JsOption<Number>,
+            JsOption<Number>,
+            JsOption<Number>,
+            JsOption<Number>,
+            JsOption<Number>,
+            JsOption<Number>,
         ) -> Number,
     >;
 }
