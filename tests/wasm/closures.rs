@@ -1,8 +1,8 @@
 use js_sys::Number;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
-use wasm_bindgen::convert::ClosureArg;
 use wasm_bindgen::prelude::*;
+use wasm_bindgen::IntoJs;
 use wasm_bindgen_test::*;
 
 #[wasm_bindgen(module = "tests/wasm/closures.js")]
@@ -1072,10 +1072,10 @@ extern "C" {
     fn immediate_closure_fn_call(f: &ImmediateClosure<dyn Fn()>);
     fn immediate_closure_catches_panic(f: &ImmediateClosure<dyn FnMut()>) -> bool;
 
-    // Test ClosureArg blessed trait pattern - same JS function, different Rust signature
+    // Test IntoJs blessed trait pattern - same JS function, different Rust signature
     #[wasm_bindgen(js_name = immediate_closure_call_ret)]
-    fn closure_arg_call_ret(
-        f: impl ClosureArg<ImmediateClosure<'_, dyn FnMut(u32) -> u32>>,
+    fn closure_arg_call_ret<'a>(
+        f: impl IntoJs<ImmediateClosure<'a, dyn FnMut(u32) -> u32>>,
         value: u32,
     ) -> u32;
 }
@@ -1153,22 +1153,35 @@ fn immediate_closure_to_scoped_closure() {
     assert_eq!(sum, 6); // 1 + 2 + 3
 }
 
-// Test ClosureArg trait with imported function using blessed impl trait pattern
+// Test IntoJs trait with imported function using blessed impl trait pattern
 #[wasm_bindgen_test]
-fn closure_arg_trait() {
-    // Test with raw closure - pass &mut F directly
-    let result = closure_arg_call_ret(&mut |x: u32| x * 2, 21);
-    assert_eq!(result, 42);
-
-    // Test with ImmediateClosure - pass &ImmediateClosure directly
+fn immediate_into_js_trait() {
+    // Test with ImmediateClosure - pass ImmediateClosure directly (owned)
     let mut counter = 0u32;
     {
         let mut func = |x: u32| {
             counter += x;
             x * 3
         };
-        let immediate = ImmediateClosure::new(&mut func);
-        let result = closure_arg_call_ret(&immediate, 10);
+        let result = closure_arg_call_ret(&ImmediateClosure::new(&mut func), 10);
+        assert_eq!(result, 30);
+        assert_eq!(counter, 10);
+    }
+}
+
+// Test IntoJs trait with imported function using blessed impl trait pattern
+#[wasm_bindgen_test]
+fn closure_into_js_trait() {
+    // Test with ImmediateClosure - pass ImmediateClosure directly (owned)
+    let mut counter = 0u32;
+    {
+        let result = closure_arg_call_ret(
+            &mut |x: u32| {
+                counter += x;
+                x * 3
+            },
+            10,
+        );
         assert_eq!(result, 30);
         assert_eq!(counter, 10);
     }

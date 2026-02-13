@@ -784,48 +784,6 @@ impl<T: ?Sized> fmt::Debug for ImmediateClosure<'_, T> {
     }
 }
 
-// &ImmediateClosure<U> -> ImmediateClosure<T> where T: UpcastFrom<U>
-impl<'a, T, U> ClosureArg<ImmediateClosure<'a, T>> for &'a ImmediateClosure<'a, U>
-where
-    T: ?Sized + WasmClosure + UpcastFrom<U>,
-    U: ?Sized + WasmClosure,
-{
-    type Output = ImmediateClosure<'a, T>;
-    fn into_closure(self) -> Self::Output {
-        // Copy the lightweight struct, then upcast
-        let copy = ImmediateClosure {
-            data: self.data,
-            unwind_safe: self.unwind_safe,
-            _marker: PhantomData,
-        };
-        copy.upcast()
-    }
-}
-
-// &mut F -> ImmediateClosure<T> where T: UpcastFrom<F::Static>
-impl<'a, F, T> ClosureArg<ImmediateClosure<'a, T>> for &'a mut F
-where
-    T: ?Sized + WasmClosure + UpcastFrom<F::Static>,
-    F: UnsizeClosureRefMut<T> + 'a,
-    F::Static: WasmClosure,
-{
-    type Output = ImmediateClosure<'a, T>;
-    fn into_closure(self) -> Self::Output {
-        let immediate: ImmediateClosure<'a, F::Static> = ImmediateClosure::new(self);
-        immediate.upcast()
-    }
-}
-
-// &mut ScopedClosure -> &mut ScopedClosure (borrow through)
-impl<'a, T: ?Sized + WasmClosure> ClosureArg<ScopedClosure<'a, T>>
-    for &'a mut ScopedClosure<'a, T>
-{
-    type Output = &'a mut ScopedClosure<'a, T>;
-    fn into_closure(self) -> Self::Output {
-        self
-    }
-}
-
 impl<'a, T: ?Sized + WasmClosure> From<&'a ImmediateClosure<'a, T>> for ScopedClosure<'a, T> {
     /// Converts an `ImmediateClosure` reference into a `ScopedClosure`.
     ///

@@ -503,17 +503,67 @@ impl_tuple_upcast!([T1 T2 T3 T4 T5 T6] [Target1 Target2 Target3 Target4 Target5 
 impl_tuple_upcast!([T1 T2 T3 T4 T5 T6 T7] [Target1 Target2 Target3 Target4 Target5 Target6 Target7]);
 impl_tuple_upcast!([T1 T2 T3 T4 T5 T6 T7 T8] [Target1 Target2 Target3 Target4 Target5 Target6 Target7 Target8]);
 
-/// Marker trait to indicate a callable upcast type
-pub trait JsUpcast<T: ErasableGeneric, R = <T as ErasableGeneric>::Repr>:
-    Upcast<T> + ErasableGeneric<Repr = R>
-{
+/// A unified trait for converting Rust values into JavaScript-compatible types.
+///
+/// `IntoJs<T>` provides a single interface for:
+/// - **Upcasting**: Converting narrower JS types to wider types (e.g., `Child` to `Parent`)
+/// - **Closure conversion**: Converting raw closures or closure wrappers to the expected type
+///
+/// # Type Parameter
+///
+/// - `T`: The target JavaScript type to convert into (must implement `ErasableGeneric`)
+///
+/// # Examples
+///
+/// ## Upcasting JS Types
+///
+/// ```ignore
+/// use wasm_bindgen::IntoJs;
+///
+/// #[wasm_bindgen]
+/// extern "C" {
+///     fn process(obj: impl IntoJs<Parent>);
+/// }
+///
+/// // Can pass Child where Parent is expected
+/// let child = Child::new();
+/// process(child);  // child.into_js() is called automatically
+/// ```
+///
+/// ## With References
+///
+/// ```ignore
+/// #[wasm_bindgen]
+/// extern "C" {
+///     fn process_ref<'a>(obj: impl IntoJs<&'a Parent>);
+/// }
+///
+/// let child = Child::new();
+/// process_ref(&child);  // Upcast reference
+/// ```
+///
+/// # Implementation
+///
+/// This trait is automatically implemented for all types that can upcast to `T`
+/// via the `Upcast` trait and share the same `ErasableGeneric` representation.
+pub trait IntoJs<T> {
+    /// Convert this value into the target JavaScript type.
+    fn into_js(self) -> T;
 }
 
-impl<S, T> JsUpcast<T> for S
+/// Blanket implementation for upcasting JS types.
+///
+/// Any type `S` that implements `Upcast<T>` and shares the same `ErasableGeneric::Repr`
+/// can be converted to `T` via `into_js()`.
+impl<S, T> IntoJs<T> for S
 where
-    S: Upcast<T> + ErasableGeneric<Repr = T::Repr>,
-    T: ErasableGeneric,
+    S: Upcast<T> + ErasableGeneric,
+    T: ErasableGeneric<Repr = S::Repr>,
 {
+    #[inline]
+    fn into_js(self) -> T {
+        self.upcast()
+    }
 }
 
 /// A convenience trait for types that erase to [`JsValue`].
@@ -549,43 +599,3 @@ pub trait JsGeneric:
 {
 }
 impl<T: ErasableGeneric<Repr = JsValue> + Upcast<T> + Upcast<JsValue> + 'static> JsGeneric for T {}
-
-/// Trait for types that can be used as closure arguments in wasm-bindgen functions.
-///
-/// The type parameter `T` is the ABI type that the wasm-bindgen macro extracts
-/// via syntax pattern matching (e.g., `ImmediateClosure<'a, dyn FnMut(u32)>`).
-/// The `Output` associated type is what `into_closure()` actually returns,
-/// which may differ from `T` (e.g., returning `&'a mut ScopedClosure` for borrows).
-///
-/// # Example with ImmediateClosure
-///
-/// ```ignore
-/// use wasm_bindgen::prelude::*;
-///
-/// fn call_immediate<'a>(f: impl ClosureArg<ImmediateClosure<'a, dyn FnMut(u32)>>) {
-///     let closure = f.into_closure();
-///     // use closure...
-/// }
-///
-/// // Can be called with either:
-/// call_immediate(&mut |x: u32| { /* ... */ });
-/// call_immediate(&ImmediateClosure::new(&mut |x: u32| { /* ... */ }));
-/// ```
-///
-/// # Example with ScopedClosure
-///
-/// ```ignore
-/// use wasm_bindgen::prelude::*;
-///
-/// fn call_scoped<'a>(f: impl ClosureArg<ScopedClosure<'a, dyn FnMut(u32)>>) {
-///     let closure = f.into_closure();
-///     // use closure...
-/// }
-///
-/// // Can be called with:
-/// call_scoped(&mut some_scoped_closure);
-/// ```
-pub trait ClosureArg<T> {
-    type Output;
-    fn into_closure(self) -> Self::Output;
-}

@@ -136,8 +136,8 @@ mod externref;
 use externref::__wbindgen_externref_heap_live_count;
 
 pub use crate::__rt::marker::{ErasableGeneric, Promising};
+pub use crate::convert::IntoJs;
 pub use crate::convert::JsGeneric;
-pub use crate::convert::JsUpcast;
 
 mod cast;
 pub use crate::cast::JsCast;

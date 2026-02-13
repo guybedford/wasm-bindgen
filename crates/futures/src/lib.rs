@@ -54,7 +54,7 @@ use wasm_bindgen::__rt::marker::ErasableGeneric;
 #[cfg(all(target_arch = "wasm32", feature = "std", panic = "unwind"))]
 use wasm_bindgen::__rt::panic_to_panic_error;
 use wasm_bindgen::convert::{FromWasmAbi, Upcast};
-use wasm_bindgen::{prelude::*, JsUpcast, JsError, JsGeneric};
+use wasm_bindgen::{prelude::*, JsError, JsGeneric};
 
 mod queue;
 #[cfg_attr(docsrs, doc(cfg(feature = "futures-core-03-stream")))]
@@ -331,7 +331,7 @@ where
 pub fn future_to_promise_typed<F, T>(future: F) -> Promise<T>
 where
     F: Future<Output = Result<T, JsValue>> + 'static,
-    T: FromWasmAbi + JsGeneric + JsUpcast<T, JsValue> + 'static,
+    T: FromWasmAbi + JsGeneric + 'static,
 {
     let mut future = Some(future);
 

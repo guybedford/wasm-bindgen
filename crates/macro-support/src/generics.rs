@@ -206,43 +206,43 @@ pub(crate) fn generic_bounds<'a>(generics: &'a syn::Generics) -> Vec<Cow<'a, syn
     bounds
 }
 
-/// Detects if a type is `impl JsUpcast<T>` or `&impl JsUpcast<T>` pattern
+/// Detects if a type is `impl IntoJs<T>` or `&impl IntoJs<T>` pattern
 /// Returns the inner type T with lifetimes stripped (for use in ABI contexts)
-pub fn is_as_upcast_impl(ty: &syn::Type) -> Option<syn::Type> {
-    is_as_upcast_impl_raw(ty).map(strip_lifetimes)
+pub fn is_into_js_impl(ty: &syn::Type) -> Option<syn::Type> {
+    is_into_js_impl_raw(ty).map(strip_lifetimes)
 }
 
-/// Detects if a type is `impl JsUpcast<T>` or `&impl JsUpcast<T>` pattern
+/// Detects if a type is `impl IntoJs<T>` or `&impl IntoJs<T>` pattern
 /// Returns the inner type T with lifetimes preserved (for lifetime hoisting analysis)
-pub fn is_as_upcast_impl_raw(ty: &syn::Type) -> Option<syn::Type> {
+pub fn is_into_js_impl_raw(ty: &syn::Type) -> Option<syn::Type> {
     match ty {
-        // Pattern: &impl JsUpcast<T>
+        // Pattern: &impl IntoJs<T>
         syn::Type::Reference(type_ref) => {
             if let syn::Type::ImplTrait(impl_trait) = &*type_ref.elem {
-                is_as_upcast(impl_trait)
+                is_into_js_bound(impl_trait)
             } else {
                 None
             }
         }
-        // Pattern: impl JsUpcast<T>
-        syn::Type::ImplTrait(impl_trait) => is_as_upcast(impl_trait),
+        // Pattern: impl IntoJs<T>
+        syn::Type::ImplTrait(impl_trait) => is_into_js_bound(impl_trait),
         _ => None,
     }
 }
 
-/// Checks if impl trait has JsUpcast<T> bound
+/// Checks if impl trait has IntoJs<T> bound
 /// Returns the inner type with lifetimes preserved
-fn is_as_upcast(impl_trait: &syn::TypeImplTrait) -> Option<syn::Type> {
+fn is_into_js_bound(impl_trait: &syn::TypeImplTrait) -> Option<syn::Type> {
     let mut bounds_iter = impl_trait.bounds.iter();
     if let Some(syn::TypeParamBound::Trait(trait_bound)) = bounds_iter.next() {
         if bounds_iter.next().is_some() {
             return None;
         }
-        if let Some(syn::PathSegment {
-            arguments: syn::PathArguments::AngleBracketed(arguments),
-            ..
-        }) = &trait_bound.path.segments.last()
-        {
+        let segment = trait_bound.path.segments.last()?;
+        if segment.ident != "IntoJs" {
+            return None;
+        }
+        if let syn::PathArguments::AngleBracketed(arguments) = &segment.arguments {
             if arguments.args.len() != 1 {
                 return None;
             }

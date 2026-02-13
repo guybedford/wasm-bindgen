@@ -1,7 +1,7 @@
 use crate::ast;
 use crate::encode;
 use crate::encode::EncodeChunk;
-use crate::generics::{self, generic_to_concrete, is_as_upcast_impl};
+use crate::generics::{self, generic_to_concrete, is_into_js_impl};
 use crate::Diagnostic;
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::format_ident;
@@ -1572,7 +1572,7 @@ impl TryToTokens for ast::ImportFunction {
 
         for (i, arg) in self.function.arguments.iter().enumerate() {
             let impl_ty = &*arg.pat_type.ty;
-            let as_upcast_ty = is_as_upcast_impl(impl_ty);
+            let as_upcast_ty = is_into_js_impl(impl_ty);
             let ty = as_upcast_ty.as_ref().unwrap_or(impl_ty);
             let name = match &*arg.pat_type.pat {
                 syn::Pat::Ident(syn::PatIdent {
@@ -1629,7 +1629,7 @@ impl TryToTokens for ast::ImportFunction {
                             };
                             inner_ty_trait.bounds.push(syn::TypeParamBound::Lifetime(arg_lt.clone()));
                             concrete_ty_trait.bounds.push(syn::TypeParamBound::Lifetime(arg_lt.clone()));
-                            // For JsUpcast patterns, preserve the original impl_ty in the signature
+                            // For IntoJs patterns, preserve the original impl_ty in the signature
                             if as_upcast_ty.is_some() {
                                 arguments.push(quote! { #name: #impl_ty });
                             } else {
@@ -1637,7 +1637,7 @@ impl TryToTokens for ast::ImportFunction {
                             }
                             (&inner_ty_bounded, &concrete_ty_bounded)
                         } else {
-                            // For JsUpcast patterns, preserve the original impl_ty in the signature
+                            // For IntoJs patterns, preserve the original impl_ty in the signature
                             if as_upcast_ty.is_some() {
                                 arguments.push(quote! { #name: #impl_ty });
                             } else {
@@ -1661,9 +1661,9 @@ impl TryToTokens for ast::ImportFunction {
                     quote! { #concrete_ty }
                 };
 
-                // Apply upcast if this was impl JsUpcast<T> (owned only)
-                let upcast_var = if is_as_upcast_impl(impl_ty).is_some() {
-                    quote! { #wasm_bindgen::convert::Upcast::<#ty>::upcast(#var) }
+                // Apply into_js if this was impl IntoJs<T> (owned only)
+                let upcast_var = if is_into_js_impl(impl_ty).is_some() {
+                    quote! { #wasm_bindgen::IntoJs::<#ty>::into_js(#var) }
                 } else {
                     quote! { #var }
                 };
@@ -1675,9 +1675,9 @@ impl TryToTokens for ast::ImportFunction {
                 }
                 abi_ty = quote! { #ty };
 
-                // Apply upcast if this was impl JsUpcast<T> (owned only)
-                convert_arg = if is_as_upcast_impl(impl_ty).is_some() {
-                    quote! { #wasm_bindgen::convert::Upcast::<#ty>::upcast(#var) }
+                // Apply into_js if this was impl IntoJs<T> (owned only)
+                convert_arg = if is_into_js_impl(impl_ty).is_some() {
+                    quote! { #wasm_bindgen::IntoJs::<#ty>::into_js(#var) }
                 } else {
                     quote! { #var }
                 };
@@ -1850,7 +1850,7 @@ impl TryToTokens for ast::ImportFunction {
                 // Type lifetimes: appear on impl AND passed to type
                 let class_lifetime_params = &fn_class_generics.class_lifetime_params;
                 // Bound-only lifetimes: appear on impl but NOT passed to type
-                // (from JsUpcast patterns like `impl JsUpcast<&'a T>`)
+                // (from IntoJs patterns like `impl IntoJs<&'a T>`)
                 let class_bound_lifetime_params = &fn_class_generics.class_bound_lifetime_params;
                 let class_generic_params = &fn_class_generics.class_generic_params;
                 let class_generic_exprs = &fn_class_generics.class_generic_exprs;
@@ -1945,7 +1945,7 @@ struct FnClassGenerics<'a> {
     // hoisted class-level lifetime params (both passed to type and only in bounds)
     class_lifetime_params: Vec<&'a syn::Lifetime>,
     // hoisted class-level lifetime params that are only used in bounds (not passed to type)
-    // These come from JsUpcast patterns like `impl JsUpcast<&'a T>` where T is a class generic
+    // These come from IntoJs patterns like `impl IntoJs<&'a T>` where T is a class generic
     class_bound_lifetime_params: Vec<syn::Lifetime>,
     // the remaining non-hoisted function-level lifetime params
     fn_lifetime_params: Vec<&'a syn::Lifetime>,
@@ -2095,17 +2095,17 @@ impl ast::ImportFunction {
 
                 let class_generic_params_refs: Vec<&Ident> = class_generic_params.iter().collect();
 
-                // Scan function arguments for JsUpcast patterns that use class generic params
+                // Scan function arguments for IntoJs patterns that use class generic params
                 // If they do, hoist the lifetimes from those patterns to the class level
                 // These lifetimes are "bound-only" - they appear on the impl but not passed to the type
                 for arg in &self.function.arguments {
-                    if let Some(inner_ty) = is_as_upcast_impl(&arg.pat_type.ty) {
+                    if let Some(inner_ty) = is_into_js_impl(&arg.pat_type.ty) {
                         // Check if the inner type uses any class generic params
                         if generics::uses_generic_params(&inner_ty, &class_generic_params_refs) {
-                            // Hoist lifetimes from the original (non-stripped) JsUpcast inner type
+                            // Hoist lifetimes from the original (non-stripped) IntoJs inner type
                             // We need to re-extract without stripping lifetimes
                             if let Some(inner_ty_with_lifetimes) =
-                                generics::is_as_upcast_impl_raw(&arg.pat_type.ty)
+                                generics::is_into_js_impl_raw(&arg.pat_type.ty)
                             {
                                 let used_lifetimes = generics::used_lifetimes_in_type(
                                     &inner_ty_with_lifetimes,
@@ -2193,7 +2193,7 @@ impl TryToTokens for DescribeImport<'_> {
             .arguments
             .iter()
             .map(|arg| {
-                let ty = is_as_upcast_impl(&arg.pat_type.ty)
+                let ty = is_into_js_impl(&arg.pat_type.ty)
                     .unwrap_or_else(|| (*arg.pat_type.ty).clone());
                 generics::generic_to_concrete(ty, &fn_class_generics.concrete_defaults)
             })

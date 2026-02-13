@@ -4,11 +4,11 @@ use core::mem;
 #[cfg(all(feature = "std", target_arch = "wasm32", panic = "unwind"))]
 use crate::__rt::maybe_catch_unwind;
 use crate::closure::{
-    Closure, IntoWasmClosure, ScopedClosure, UnsizeClosureRef, UnsizeClosureRefMut, WasmClosure,
-    WasmClosureFnOnce, WasmClosureFnOnceAbort,
+    Closure, ImmediateClosure, IntoWasmClosure, ScopedClosure, UnsizeClosureRef,
+    UnsizeClosureRefMut, WasmClosure, WasmClosureFnOnce, WasmClosureFnOnceAbort,
 };
 use crate::convert::slices::WasmSlice;
-use crate::convert::traits::UpcastFrom;
+use crate::convert::traits::{IntoJs, UpcastFrom};
 use crate::convert::RefFromWasmAbi;
 use crate::convert::{FromWasmAbi, IntoWasmAbi, ReturnWasmAbi, WasmAbi, WasmRet};
 use crate::describe::{inform, WasmDescribe, FUNCTION};
@@ -189,10 +189,30 @@ macro_rules! closures {
         }
     );
 
+    // IntoJs impl for &mut dyn FnMut -> ImmediateClosure
+    (@impl_into_js_closure $FnArgs:tt $FromWasmAbi:ident $($var_expr:expr => $var:ident $arg1:ident $arg2:ident $arg3:ident $arg4:ident)*) => (
+        impl<'a, $($var: 'a + $FromWasmAbi,)* R: 'a + ReturnWasmAbi> IntoJs<ImmediateClosure<'a, dyn FnMut $FnArgs -> R + 'a>>
+            for &'a mut (dyn FnMut $FnArgs -> R + 'a)
+        {
+            fn into_js(self) -> ImmediateClosure<'a, dyn FnMut $FnArgs -> R + 'a> {
+                ImmediateClosure::from_dyn_fn_mut(self)
+            }
+        }
+
+        impl<'a, $($var: 'a + $FromWasmAbi,)* R: 'a + ReturnWasmAbi> IntoJs<ImmediateClosure<'a, dyn Fn $FnArgs -> R + 'a>>
+            for &'a (dyn Fn $FnArgs -> R + 'a)
+        {
+            fn into_js(self) -> ImmediateClosure<'a, dyn Fn $FnArgs -> R + 'a> {
+                ImmediateClosure::from_dyn_fn(self)
+            }
+        }
+    );
+
     (@impl_for_args $FnArgs:tt $FromWasmAbi:ident [$($maybe_unwind_safe:tt)*] $($var_expr:expr => $var:ident $arg1:ident $arg2:ident $arg3:ident $arg4:ident)*) => {
         closures!(@impl_for_fn false [] Fn $FnArgs $FromWasmAbi $($var_expr => $var $arg1 $arg2 $arg3 $arg4)*);
         closures!(@impl_for_fn true [mut] FnMut $FnArgs $FromWasmAbi $($var_expr => $var $arg1 $arg2 $arg3 $arg4)*);
         closures!(@impl_unsize_closure_ref $FnArgs $FromWasmAbi $($var_expr => $var $arg1 $arg2 $arg3 $arg4)*);
+        closures!(@impl_into_js_closure $FnArgs $FromWasmAbi $($var_expr => $var $arg1 $arg2 $arg3 $arg4)*);
 
         // The memory safety here in these implementations below is a bit tricky. We
         // want to be able to drop the `Closure` object from within the invocation of a

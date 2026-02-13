@@ -441,22 +441,22 @@ impl Upcast<SomeOtherType> for SubClass {}
 
 For types with custom `ErasableGeneric<Repr>` where `Repr` is not `JsValue`, manual `Upcast` implementations may be required.
 
-## Covariant Function Arguments with `impl JsUpcast<T>`
+## Covariant Function Arguments with `impl IntoJs<T>`
 
-Use `impl JsUpcast<T>` in function arguments to accept any type that upcasts to `T`.
+Use `impl IntoJs<T>` in function arguments to accept any type that can be converted to `T`.
 
-This is supported as a special case in import function bindgen, applying the upcast prior to ABI handling.
+This is supported as a special case in import function bindgen, applying the conversion prior to ABI handling.
 
-For example, a function taking any `Promise<Array>` can receive a `Promise<Array<Number>>` without an explicit `upcast()` required:
+For example, a function taking any `Promise<Array>` can receive a `Promise<Array<Number>>` without an explicit `into_js()` required:
 
 ```rust
-use wasm_bindgen::JsUpcast;
+use wasm_bindgen::IntoJs;
 use js_sys::{Promise, Number};
 
 #[wasm_bindgen]
 extern "C" {
     // JavaScript: function process(promise) { return promise; }
-    fn process(p: impl JsUpcast<Promise<Array>>) -> Promise<JsValue>;
+    fn process(p: impl IntoJs<Promise<Array>>) -> Promise<JsValue>;
 }
 
 // All of these work:
@@ -467,4 +467,4 @@ let p2: Promise<Array<Promise>> = /* ... */;
 process(p2); // ✓ Promise upcasts to JsValue
 ```
 
-The upcast happens automatically at compile time with zero runtime cost. Only `impl JsUpcast<T>` specifically is supported in bindgen wrapping.
+The conversion happens automatically at compile time with zero runtime cost. Only `impl IntoJs<T>` specifically is supported in bindgen wrapping.

@@ -1,5 +1,5 @@
 use js_sys::Promise;
-use wasm_bindgen::convert::JsUpcast;
+use wasm_bindgen::IntoJs;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_test::*;
 
@@ -16,12 +16,12 @@ extern "C" {
     #[wasm_bindgen(constructor)]
     fn new_child(value: i32) -> Child;
 
-    fn process_parent(obj: impl JsUpcast<Parent>) -> i32;
+    fn process_parent(obj: impl IntoJs<Parent>) -> i32;
 
     #[wasm_bindgen(js_name = "process_parent")]
-    fn process_parent_ref<'a>(obj: impl JsUpcast<&'a Parent>) -> i32;
+    fn process_parent_ref<'a>(obj: impl IntoJs<&'a Parent>) -> i32;
 
-    fn process_promise(p: impl JsUpcast<Promise<Parent>>) -> Promise<i32>;
+    fn process_promise(p: impl IntoJs<Promise<Parent>>) -> Promise<i32>;
 }
 
 #[wasm_bindgen_test]
