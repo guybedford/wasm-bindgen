@@ -549,3 +549,43 @@ pub trait JsGeneric:
 {
 }
 impl<T: ErasableGeneric<Repr = JsValue> + Upcast<T> + Upcast<JsValue> + 'static> JsGeneric for T {}
+
+/// Trait for types that can be used as closure arguments in wasm-bindgen functions.
+///
+/// The type parameter `T` is the ABI type that the wasm-bindgen macro extracts
+/// via syntax pattern matching (e.g., `ImmediateClosure<'a, dyn FnMut(u32)>`).
+/// The `Output` associated type is what `into_closure()` actually returns,
+/// which may differ from `T` (e.g., returning `&'a mut ScopedClosure` for borrows).
+///
+/// # Example with ImmediateClosure
+///
+/// ```ignore
+/// use wasm_bindgen::prelude::*;
+///
+/// fn call_immediate<'a>(f: impl ClosureArg<ImmediateClosure<'a, dyn FnMut(u32)>>) {
+///     let closure = f.into_closure();
+///     // use closure...
+/// }
+///
+/// // Can be called with either:
+/// call_immediate(&mut |x: u32| { /* ... */ });
+/// call_immediate(&ImmediateClosure::new(&mut |x: u32| { /* ... */ }));
+/// ```
+///
+/// # Example with ScopedClosure
+///
+/// ```ignore
+/// use wasm_bindgen::prelude::*;
+///
+/// fn call_scoped<'a>(f: impl ClosureArg<ScopedClosure<'a, dyn FnMut(u32)>>) {
+///     let closure = f.into_closure();
+///     // use closure...
+/// }
+///
+/// // Can be called with:
+/// call_scoped(&mut some_scoped_closure);
+/// ```
+pub trait ClosureArg<T> {
+    type Output;
+    fn into_closure(self) -> Self::Output;
+}

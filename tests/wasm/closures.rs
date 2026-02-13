@@ -1,6 +1,7 @@
 use js_sys::Number;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
+use wasm_bindgen::convert::ClosureArg;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_test::*;
 
@@ -1070,6 +1071,13 @@ extern "C" {
     fn immediate_closure_call_ret(f: &ImmediateClosure<dyn FnMut(u32) -> u32>, value: u32) -> u32;
     fn immediate_closure_fn_call(f: &ImmediateClosure<dyn Fn()>);
     fn immediate_closure_catches_panic(f: &ImmediateClosure<dyn FnMut()>) -> bool;
+
+    // Test ClosureArg blessed trait pattern - same JS function, different Rust signature
+    #[wasm_bindgen(js_name = immediate_closure_call_ret)]
+    fn closure_arg_call_ret(
+        f: impl ClosureArg<ImmediateClosure<'_, dyn FnMut(u32) -> u32>>,
+        value: u32,
+    ) -> u32;
 }
 
 #[wasm_bindgen_test]
@@ -1145,24 +1153,11 @@ fn immediate_closure_to_scoped_closure() {
     assert_eq!(sum, 6); // 1 + 2 + 3
 }
 
-// Test ClosureArg trait
+// Test ClosureArg trait with imported function using blessed impl trait pattern
 #[wasm_bindgen_test]
 fn closure_arg_trait() {
-    // Helper function that accepts impl ClosureArg
-    // The trait is parameterized by the ABI type for macro pattern matching
-    fn call_with_closure<'a>(
-        f: impl ClosureArg<ImmediateClosure<'a, dyn FnMut(u32) -> u32>>,
-    ) -> u32 {
-        let closure = f.into_closure();
-        // In real use, this would be passed to JS. Here we just verify it compiles.
-        // We can't actually call the closure from Rust, but we can verify the conversion works.
-        let _ = &closure;
-        42
-    }
-
     // Test with raw closure - pass &mut F directly
-    let mut func1 = |x: u32| x * 2;
-    let result = call_with_closure(&mut func1);
+    let result = closure_arg_call_ret(&mut |x: u32| x * 2, 21);
     assert_eq!(result, 42);
 
     // Test with ImmediateClosure - pass &ImmediateClosure directly
@@ -1170,11 +1165,12 @@ fn closure_arg_trait() {
     {
         let mut func = |x: u32| {
             counter += x;
-            counter
+            x * 3
         };
         let immediate = ImmediateClosure::new(&mut func);
-        let result = call_with_closure(&immediate);
-        assert_eq!(result, 42);
+        let result = closure_arg_call_ret(&immediate, 10);
+        assert_eq!(result, 30);
+        assert_eq!(counter, 10);
     }
 }
 

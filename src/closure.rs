@@ -784,68 +784,35 @@ impl<T: ?Sized> fmt::Debug for ImmediateClosure<'_, T> {
     }
 }
 
-/// Trait for types that can be used as closure arguments in wasm-bindgen functions.
-///
-/// The type parameter `T` is the ABI type that the wasm-bindgen macro extracts
-/// via syntax pattern matching (e.g., `ImmediateClosure<'a, dyn FnMut(u32)>`).
-/// The `Output` associated type is what `into_closure()` actually returns,
-/// which may differ from `T` (e.g., returning `&'a mut ScopedClosure` for borrows).
-///
-/// # Example with ImmediateClosure
-///
-/// ```ignore
-/// use wasm_bindgen::prelude::*;
-///
-/// fn call_immediate<'a>(f: impl ClosureArg<ImmediateClosure<'a, dyn FnMut(u32)>>) {
-///     let closure = f.into_closure();
-///     // use closure...
-/// }
-///
-/// // Can be called with either:
-/// call_immediate(&mut |x: u32| { /* ... */ });
-/// call_immediate(&ImmediateClosure::new(&mut |x: u32| { /* ... */ }));
-/// ```
-///
-/// # Example with ScopedClosure
-///
-/// ```ignore
-/// use wasm_bindgen::prelude::*;
-///
-/// fn call_scoped<'a>(f: impl ClosureArg<ScopedClosure<'a, dyn FnMut(u32)>>) {
-///     let closure = f.into_closure();
-///     // use closure...
-/// }
-///
-/// // Can be called with:
-/// call_scoped(&mut some_scoped_closure);
-/// ```
-pub trait ClosureArg<T> {
-    type Output;
-    fn into_closure(self) -> Self::Output;
-}
-
-// &ImmediateClosure -> ImmediateClosure (copy the lightweight struct)
-impl<'a, T: ?Sized + WasmClosure> ClosureArg<ImmediateClosure<'a, T>>
-    for &'a ImmediateClosure<'a, T>
+// &ImmediateClosure<U> -> ImmediateClosure<T> where T: UpcastFrom<U>
+impl<'a, T, U> ClosureArg<ImmediateClosure<'a, T>> for &'a ImmediateClosure<'a, U>
+where
+    T: ?Sized + WasmClosure + UpcastFrom<U>,
+    U: ?Sized + WasmClosure,
 {
     type Output = ImmediateClosure<'a, T>;
     fn into_closure(self) -> Self::Output {
-        ImmediateClosure {
+        // Copy the lightweight struct, then upcast
+        let copy = ImmediateClosure {
             data: self.data,
             unwind_safe: self.unwind_safe,
             _marker: PhantomData,
-        }
+        };
+        copy.upcast()
     }
 }
 
-// &mut F -> ImmediateClosure<dyn FnMut(...)>
-impl<'a, F, T: ?Sized + WasmClosure> ClosureArg<ImmediateClosure<'a, T>> for &'a mut F
+// &mut F -> ImmediateClosure<T> where T: UpcastFrom<F::Static>
+impl<'a, F, T> ClosureArg<ImmediateClosure<'a, T>> for &'a mut F
 where
-    F: UnsizeClosureRefMut<T, Static = T> + 'a,
+    T: ?Sized + WasmClosure + UpcastFrom<F::Static>,
+    F: UnsizeClosureRefMut<T> + 'a,
+    F::Static: WasmClosure,
 {
     type Output = ImmediateClosure<'a, T>;
     fn into_closure(self) -> Self::Output {
-        ImmediateClosure::new(self)
+        let immediate: ImmediateClosure<'a, F::Static> = ImmediateClosure::new(self);
+        immediate.upcast()
     }
 }
 
@@ -1256,4 +1223,12 @@ unsafe impl<T: ?Sized + WasmClosure> ErasableGeneric for Closure<T> {
 
 unsafe impl<T: ?Sized + WasmClosure> ErasableGeneric for ImmediateClosure<'_, T> {
     type Repr = ImmediateClosure<'static, JsValue>;
+}
+
+// ImmediateClosure<U> can be upcast to ImmediateClosure<T> when T: UpcastFrom<U>
+impl<T, U> UpcastFrom<ImmediateClosure<'_, U>> for ImmediateClosure<'_, T>
+where
+    T: ?Sized + WasmClosure + UpcastFrom<U>,
+    U: ?Sized + WasmClosure,
+{
 }
