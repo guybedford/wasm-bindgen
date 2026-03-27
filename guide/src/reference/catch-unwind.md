@@ -212,6 +212,85 @@ that this assumes your code handles potential inconsistent state after a panic.
 Functions with `&mut [T]` slice arguments cannot be used because mutable slices
 are not `UnwindSafe`. Consider using owned types like `Vec<T>` instead.
 
+## Hard Abort Handlers (Experimental)
+
+> **Note**: This feature is experimental and subject to change.
+
+When built with `panic=unwind`, wasm-bindgen also exposes hooks for responding
+to *hard aborts* — non-recoverable errors such as `unreachable`, stack overflow,
+or out-of-memory that cannot be caught by `catch_unwind`.  When a hard abort
+occurs the Wasm instance is permanently poisoned and no further exports can be
+called.
+
+### `wasm_bindgen::handler::set_on_abort`
+
+Registers a callback that fires immediately after the instance is poisoned, but
+before the original error propagates to JavaScript.  The callback is invoked
+from the generated JS glue with the terminated flag already set, so any
+re-entrant export call from within the handler is immediately blocked.  A
+throwing or panicking handler cannot suppress the original error.
+
+```rust
+use std::sync::atomic::{AtomicBool, Ordering};
+use wasm_bindgen::prelude::*;
+
+static ABORTED: AtomicBool = AtomicBool::new(false);
+
+fn on_abort() {
+    ABORTED.store(true, Ordering::SeqCst);
+}
+
+#[wasm_bindgen(start)]
+pub fn start() {
+    wasm_bindgen::handler::set_on_abort(on_abort);
+}
+```
+
+`set_on_abort` returns the previously registered handler (`None` if none was
+set), mirroring the `std::panic::set_hook` convention.
+
+### `wasm_bindgen::handler::reinit` and `set_on_reinit` (Experimental)
+
+> **Note**: `reinit` and `set_on_reinit` additionally require wasm-bindgen to
+> be invoked with `--experimental-reset-state-function`.  Without that flag the
+> JS-side guard is not emitted and calling `reinit()` has no effect.
+
+`reinit()` writes a sentinel value into the termination flag.  The next call to
+any export detects this, creates a fresh `WebAssembly.Instance` from the same
+module, and then invokes the registered `set_on_reinit` callback on the new
+instance.
+
+Because a new instance resets all Rust statics, the reinit callback should be
+registered in a `#[wasm_bindgen(start)]` function so it is automatically
+re-registered on every instantiation:
+
+```rust
+use wasm_bindgen::prelude::*;
+
+fn on_reinit() {
+    // called on every fresh instance after reinit()
+}
+
+#[wasm_bindgen(start)]
+pub fn start() {
+    wasm_bindgen::handler::set_on_reinit(on_reinit);
+}
+
+#[wasm_bindgen]
+pub fn request_reinit() {
+    wasm_bindgen::handler::reinit();
+}
+```
+
+### Callback storage design
+
+Both handlers are stored as Wasm indirect-function-table indices (plain `u32`
+statics) rather than heap-allocated closures.  This is intentional: during a
+hard abort, linear memory and the heap allocator may be in a corrupt state.  The
+Wasm `__indirect_function_table` lives entirely outside linear memory and is
+always safe to read, making table-index dispatch the most robust mechanism
+available during an abort.
+
 ## See Also
 
 - [`catch` attribute](./attributes/on-js-imports/catch.md) - For catching

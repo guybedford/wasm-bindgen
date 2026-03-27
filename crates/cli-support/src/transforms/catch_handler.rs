@@ -88,6 +88,14 @@ pub fn run(
     };
     let memory = crate::wasm_conventions::get_memory(module)?;
 
+    // Force-export __wbindgen_invoke_abort_handler and __wbindgen_reinit before
+    // the walrus GC pass runs, so they survive dead-code elimination.
+    // Both are present when built with panic=unwind (same condition as
+    // __instance_terminated above). The JS codegen calls them by name.
+    for name in &["__wbindgen_invoke_abort_handler", "__wbindgen_reinit"] {
+        force_export_func_by_name(module, name);
+    }
+
     // Import the JSTag
     let js_tag = import_js_tag(module);
     let wrapped_js_tag = Some(import_externref_tag(module, "__wbindgen_wrapped_jstag"));
@@ -551,6 +559,24 @@ impl VisitorMut for CallRewriter<'_> {
             if let Some(wrapper) = self.wrappers.get(func) {
                 *func = *wrapper;
             }
+        }
+    }
+}
+
+/// Ensure a function named `name` appears in the module's export section.
+///
+/// If the function exists but is not yet exported, it is added.  If it is
+/// already exported, or does not exist in the module, this is a no-op.
+/// This is used to keep intrinsics alive through the walrus GC pass.
+pub(crate) fn force_export_func_by_name(module: &mut walrus::Module, name: &str) {
+    if let Some(func_id) = module
+        .funcs
+        .iter()
+        .find(|f| f.name.as_deref() == Some(name))
+        .map(|f| f.id())
+    {
+        if !module.exports.iter().any(|e| e.name == name) {
+            module.exports.add(name, func_id);
         }
     }
 }

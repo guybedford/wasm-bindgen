@@ -3412,6 +3412,7 @@ if (require('worker_threads').isMainThread) {{
             const wasmInstance = new WebAssembly.Instance(wasmModule, __wbg_get_imports());
             wasm = wasmInstance.exports;
             wasm.__wbindgen_start();
+            if (typeof wasm.__wbindgen_reinit === 'function') wasm.__wbindgen_reinit();
             "
             .to_string(),
         );
@@ -3851,6 +3852,7 @@ function __wbg_handle_catch(e) {{
         throw e.getArg(__wbindgen_wrapped_jstag, 0);
     }}
     {mem_view}()[__wbg_terminated_addr] = 1;
+    try {{ wasm.__wbindgen_invoke_abort_handler(); }} catch(_) {{}}
     throw e;
 }}"
         ));

@@ -613,6 +613,175 @@ static GLOBAL_EXNDATA: ThreadLocalWrapper<Cell<[u32; 2]>> = ThreadLocalWrapper(C
 #[no_mangle]
 pub static mut __instance_terminated: u32 = 0;
 
+/// Stores the Wasm indirect-function-table index of the registered hard-abort
+/// callback.  Zero means no callback is registered.
+///
+/// # Why a table index rather than a raw pointer or boxed closure?
+///
+/// When a hard abort fires (unreachable, stack overflow, OOM) the Wasm linear
+/// memory and heap allocator may be corrupt or partially overwritten.  Storing
+/// a regular Rust function pointer as a `usize` in a heap-allocated `Box` or
+/// even as a fat pointer in a `static` would require a linear-memory read to
+/// resolve it — which is unsafe when memory is trashed.
+///
+/// Wasm indirect calls go through the `__indirect_function_table`, which is a
+/// first-class Wasm table maintained by the runtime entirely outside linear
+/// memory.  Even if the heap is corrupt the table is intact, so a table-index
+/// call is the safest possible dispatch mechanism during abort.
+#[cfg(panic = "unwind")]
+#[no_mangle]
+pub static mut __abort_handler: u32 = 0;
+
+/// Register a callback invoked when a hard abort (instance termination) occurs.
+///
+/// Returns the previously registered handler, or `None` if none was set.
+/// This mirrors the `std::panic::set_hook` convention and lets callers chain
+/// or restore handlers.
+///
+/// The callback fires after the terminated flag is set, so any re-entrant
+/// export call from within the handler is immediately blocked.  A throwing
+/// or panicking handler cannot suppress the original error.
+///
+/// **Experimental — only available when built with `panic=unwind`.**
+/// On `panic=abort` builds the no-op stub always returns `None` and the
+/// callback will never fire.
+#[cfg(panic = "unwind")]
+pub fn set_on_abort(f: fn()) -> Option<fn()> {
+    // On wasm32 every function pointer is an index into the Wasm
+    // __indirect_function_table.  Casting to usize then u32 extracts that
+    // index without touching linear memory.
+    unsafe {
+        let prev = __abort_handler;
+        __abort_handler = f as usize as u32;
+        if prev != 0 {
+            Some(core::mem::transmute(prev as usize))
+        } else {
+            None
+        }
+    }
+}
+
+/// No-op stub for `panic=abort` builds — handler will never fire.
+#[cfg(not(panic = "unwind"))]
+pub fn set_on_abort(_f: fn()) -> Option<fn()> {
+    None
+}
+
+/// Called by the generated JS glue inside `__wbg_handle_catch` when a hard
+/// abort is detected.  Reads the table index stored by [`set_on_abort`] and,
+/// if non-zero, dispatches through the Wasm indirect-function-table to call it.
+///
+/// # Why `transmute`?
+///
+/// We stored the handler as a raw `u32` table index (see [`__abort_handler`]).
+/// To call it we need to convert that index back to a `fn()`.  On wasm32
+/// `fn()` is represented as a 32-bit table index, so casting `usize -> fn()`
+/// via `transmute` is a no-op at the machine level — it merely tells the
+/// compiler to treat the integer as a callable.  There is no safer alternative:
+/// `fn()` is not a numeric type so arithmetic casts cannot produce one, and we
+/// deliberately avoid any heap-allocated wrapper that would require a linear-
+/// memory read during a potentially-corrupt abort.
+///
+/// Using `#[export_name]` ensures this function appears in the Wasm export
+/// section and therefore survives the walrus dead-code-elimination pass.
+#[cfg(panic = "unwind")]
+#[export_name = "__wbindgen_invoke_abort_handler"]
+pub unsafe extern "C" fn __wbindgen_invoke_abort_handler() {
+    let idx = __abort_handler;
+    if idx != 0 {
+        let f: fn() = core::mem::transmute(idx as usize);
+        f();
+    }
+}
+
+/// Sentinel written to `__instance_terminated` to signal a reinit.
+/// Distinct from `0` (live) and `1` (hard terminated).
+#[cfg(panic = "unwind")]
+pub const REINIT_SENTINEL: u32 = u32::MAX;
+
+/// Signal that the instance should be reinitialised before the next export
+/// call.  The generated JS `__wbg_termination_guard()` detects the sentinel
+/// and calls `__wbg_reset_state()`, which creates a fresh
+/// `WebAssembly.Instance` and then calls `__wbindgen_reinit()` on it.
+///
+/// **Experimental — only available when built with `panic=unwind` and when
+/// wasm-bindgen is invoked with `--experimental-reset-state-function`.**
+/// Without that flag the JS guard is not emitted, so the sentinel is written
+/// but never acted upon.  On `panic=abort` builds this is a no-op.
+#[cfg(panic = "unwind")]
+pub fn reinit() {
+    unsafe {
+        __instance_terminated = REINIT_SENTINEL;
+    }
+}
+
+/// Stores the Wasm indirect-function-table index of the registered reinit
+/// callback.  Zero means no callback is registered.  Same table-index
+/// rationale as [`__abort_handler`] — see its documentation for details.
+#[cfg(panic = "unwind")]
+#[no_mangle]
+pub static mut __reinit_handler: u32 = 0;
+
+/// Register a callback invoked on the new instance immediately after
+/// `__wbg_reset_state()` creates it following a [`reinit()`] signal.
+///
+/// Returns the previously registered handler, or `None` if none was set.
+/// This mirrors the `std::panic::set_hook` convention and lets callers chain
+/// or restore handlers.
+///
+/// Because `__wbg_reset_state()` creates a completely fresh
+/// `WebAssembly.Instance`, all Rust statics (including `__reinit_handler`
+/// itself) are reset to their initial values on the new instance.  The
+/// callback should therefore be re-registered on every instance — the
+/// idiomatic way is via a `#[wasm_bindgen(start)]` function that runs
+/// automatically on every instantiation.
+///
+/// **Experimental — only available when built with `panic=unwind` and when
+/// wasm-bindgen is invoked with `--experimental-reset-state-function`.**
+/// Without that flag the JS guard is not emitted and the callback will never
+/// fire.  On `panic=abort` builds the no-op stub always returns `None`.
+#[cfg(panic = "unwind")]
+pub fn set_on_reinit(f: fn()) -> Option<fn()> {
+    // Same table-index cast as set_on_abort — see that function for rationale.
+    unsafe {
+        let prev = __reinit_handler;
+        __reinit_handler = f as usize as u32;
+        if prev != 0 {
+            Some(core::mem::transmute(prev as usize))
+        } else {
+            None
+        }
+    }
+}
+
+/// No-op stub for `panic=abort` builds.
+#[cfg(not(panic = "unwind"))]
+pub fn set_on_reinit(_f: fn()) -> Option<fn()> {
+    None
+}
+
+/// No-op stub for `panic=abort` builds.
+#[cfg(not(panic = "unwind"))]
+pub fn reinit() {}
+
+/// Called by the generated JS `__wbg_reset_state()` on the **new** instance
+/// immediately after `__wbindgen_start()`.  Dispatches to the registered
+/// reinit callback via the Wasm indirect-function-table (same transmute
+/// approach as [`__wbindgen_invoke_abort_handler`] — see that function for
+/// the full rationale).
+///
+/// Because this runs on a freshly-instantiated module, `__instance_terminated`
+/// is already `0` and does not need to be cleared here.
+#[cfg(panic = "unwind")]
+#[export_name = "__wbindgen_reinit"]
+pub unsafe extern "C" fn __wbindgen_reinit() {
+    let idx = __reinit_handler;
+    if idx != 0 {
+        let f: fn() = core::mem::transmute(idx as usize);
+        f();
+    }
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn __wbindgen_exn_store(idx: u32) {
     debug_assert_eq!(GLOBAL_EXNDATA.0.get()[0], 0);
