@@ -4,7 +4,7 @@ use super::*;
 use wasm_bindgen::prelude::*;
 #[wasm_bindgen]
 extern "C" {
-    # [wasm_bindgen (extends = WritableStream , extends = :: js_sys :: Object , js_name = FileSystemWritableFileStream , typescript_type = "FileSystemWritableFileStream")]
+    # [wasm_bindgen (extends = WritableStream , extends = :: js_sys :: Object , js_name = "FileSystemWritableFileStream" , typescript_type = "FileSystemWritableFileStream")]
     #[derive(Debug, Clone, PartialEq, Eq)]
     #[doc = "The `FileSystemWritableFileStream` class."]
     #[doc = ""]
@@ -12,7 +12,12 @@ extern "C" {
     #[doc = ""]
     #[doc = "*This API requires the following crate features to be activated: `FileSystemWritableFileStream`*"]
     pub type FileSystemWritableFileStream;
-    # [wasm_bindgen (catch , method , structural , js_class = "FileSystemWritableFileStream" , js_name = seek)]
+    #[wasm_bindgen(
+        catch,
+        method,
+        js_class = "FileSystemWritableFileStream",
+        js_name = "seek"
+    )]
     #[doc = "The `seek()` method."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/FileSystemWritableFileStream/seek)"]
@@ -22,7 +27,12 @@ extern "C" {
         this: &FileSystemWritableFileStream,
         position: u32,
     ) -> Result<::js_sys::Promise, JsValue>;
-    # [wasm_bindgen (catch , method , structural , js_class = "FileSystemWritableFileStream" , js_name = seek)]
+    #[wasm_bindgen(
+        catch,
+        method,
+        js_class = "FileSystemWritableFileStream",
+        js_name = "seek"
+    )]
     #[doc = "The `seek()` method."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/FileSystemWritableFileStream/seek)"]
@@ -32,7 +42,12 @@ extern "C" {
         this: &FileSystemWritableFileStream,
         position: f64,
     ) -> Result<::js_sys::Promise, JsValue>;
-    # [wasm_bindgen (catch , method , structural , js_class = "FileSystemWritableFileStream" , js_name = truncate)]
+    #[wasm_bindgen(
+        catch,
+        method,
+        js_class = "FileSystemWritableFileStream",
+        js_name = "truncate"
+    )]
     #[doc = "The `truncate()` method."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/FileSystemWritableFileStream/truncate)"]
@@ -42,7 +57,12 @@ extern "C" {
         this: &FileSystemWritableFileStream,
         size: u32,
     ) -> Result<::js_sys::Promise, JsValue>;
-    # [wasm_bindgen (catch , method , structural , js_class = "FileSystemWritableFileStream" , js_name = truncate)]
+    #[wasm_bindgen(
+        catch,
+        method,
+        js_class = "FileSystemWritableFileStream",
+        js_name = "truncate"
+    )]
     #[doc = "The `truncate()` method."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/FileSystemWritableFileStream/truncate)"]
@@ -52,7 +72,12 @@ extern "C" {
         this: &FileSystemWritableFileStream,
         size: f64,
     ) -> Result<::js_sys::Promise, JsValue>;
-    # [wasm_bindgen (catch , method , structural , js_class = "FileSystemWritableFileStream" , js_name = write)]
+    #[wasm_bindgen(
+        catch,
+        method,
+        js_class = "FileSystemWritableFileStream",
+        js_name = "write"
+    )]
     #[doc = "The `write()` method."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/FileSystemWritableFileStream/write)"]
@@ -62,7 +87,12 @@ extern "C" {
         this: &FileSystemWritableFileStream,
         data: &::js_sys::Object,
     ) -> Result<::js_sys::Promise, JsValue>;
-    # [wasm_bindgen (catch , method , structural , js_class = "FileSystemWritableFileStream" , js_name = write)]
+    #[wasm_bindgen(
+        catch,
+        method,
+        js_class = "FileSystemWritableFileStream",
+        js_name = "write"
+    )]
     #[doc = "The `write()` method."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/FileSystemWritableFileStream/write)"]
@@ -72,7 +102,12 @@ extern "C" {
         this: &FileSystemWritableFileStream,
         data: &[u8],
     ) -> Result<::js_sys::Promise, JsValue>;
-    # [wasm_bindgen (catch , method , structural , js_class = "FileSystemWritableFileStream" , js_name = write)]
+    #[wasm_bindgen(
+        catch,
+        method,
+        js_class = "FileSystemWritableFileStream",
+        js_name = "write"
+    )]
     #[doc = "The `write()` method."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/FileSystemWritableFileStream/write)"]
@@ -83,7 +118,12 @@ extern "C" {
         data: &::js_sys::Uint8Array,
     ) -> Result<::js_sys::Promise, JsValue>;
     #[cfg(feature = "Blob")]
-    # [wasm_bindgen (catch , method , structural , js_class = "FileSystemWritableFileStream" , js_name = write)]
+    #[wasm_bindgen(
+        catch,
+        method,
+        js_class = "FileSystemWritableFileStream",
+        js_name = "write"
+    )]
     #[doc = "The `write()` method."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/FileSystemWritableFileStream/write)"]
@@ -93,7 +133,12 @@ extern "C" {
         this: &FileSystemWritableFileStream,
         data: &Blob,
     ) -> Result<::js_sys::Promise, JsValue>;
-    # [wasm_bindgen (catch , method , structural , js_class = "FileSystemWritableFileStream" , js_name = write)]
+    #[wasm_bindgen(
+        catch,
+        method,
+        js_class = "FileSystemWritableFileStream",
+        js_name = "write"
+    )]
     #[doc = "The `write()` method."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/FileSystemWritableFileStream/write)"]
@@ -104,7 +149,12 @@ extern "C" {
         data: &str,
     ) -> Result<::js_sys::Promise, JsValue>;
     #[cfg(feature = "WriteParams")]
-    # [wasm_bindgen (catch , method , structural , js_class = "FileSystemWritableFileStream" , js_name = write)]
+    #[wasm_bindgen(
+        catch,
+        method,
+        js_class = "FileSystemWritableFileStream",
+        js_name = "write"
+    )]
     #[doc = "The `write()` method."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/FileSystemWritableFileStream/write)"]

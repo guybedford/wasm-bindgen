@@ -5,7 +5,7 @@ use wasm_bindgen::prelude::*;
 #[cfg(web_sys_unstable_apis)]
 #[wasm_bindgen]
 extern "C" {
-    # [wasm_bindgen (extends = :: js_sys :: Object , js_name = Highlight , typescript_type = "Highlight")]
+    # [wasm_bindgen (extends = :: js_sys :: Object , js_name = "Highlight" , typescript_type = "Highlight")]
     #[derive(Debug, Clone, PartialEq, Eq)]
     #[doc = "The `Highlight` class."]
     #[doc = ""]
@@ -17,7 +17,7 @@ extern "C" {
     #[doc = "[described in the `wasm-bindgen` guide](https://wasm-bindgen.github.io/wasm-bindgen/web-sys/unstable-apis.html)*"]
     pub type Highlight;
     #[cfg(web_sys_unstable_apis)]
-    # [wasm_bindgen (structural , method , getter , js_class = "Highlight" , js_name = size)]
+    #[wasm_bindgen(method, getter, js_class = "Highlight", js_name = "size")]
     #[doc = "Getter for the `size` field of this object."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/Highlight/size)"]
@@ -28,7 +28,7 @@ extern "C" {
     #[doc = "[described in the `wasm-bindgen` guide](https://wasm-bindgen.github.io/wasm-bindgen/web-sys/unstable-apis.html)*"]
     pub fn size(this: &Highlight) -> u32;
     #[cfg(web_sys_unstable_apis)]
-    # [wasm_bindgen (structural , method , getter , js_class = "Highlight" , js_name = priority)]
+    #[wasm_bindgen(method, getter, js_class = "Highlight", js_name = "priority")]
     #[doc = "Getter for the `priority` field of this object."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/Highlight/priority)"]
@@ -39,7 +39,7 @@ extern "C" {
     #[doc = "[described in the `wasm-bindgen` guide](https://wasm-bindgen.github.io/wasm-bindgen/web-sys/unstable-apis.html)*"]
     pub fn priority(this: &Highlight) -> i32;
     #[cfg(web_sys_unstable_apis)]
-    # [wasm_bindgen (structural , method , setter , js_class = "Highlight" , js_name = priority)]
+    #[wasm_bindgen(method, setter, js_class = "Highlight", js_name = "priority")]
     #[doc = "Setter for the `priority` field of this object."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/Highlight/priority)"]
@@ -51,7 +51,7 @@ extern "C" {
     pub fn set_priority(this: &Highlight, value: i32);
     #[cfg(web_sys_unstable_apis)]
     #[cfg(feature = "HighlightType")]
-    # [wasm_bindgen (structural , method , getter , js_class = "Highlight" , js_name = type)]
+    #[wasm_bindgen(method, getter, js_class = "Highlight", js_name = "type")]
     #[doc = "Getter for the `type` field of this object."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/Highlight/type)"]
@@ -63,7 +63,7 @@ extern "C" {
     pub fn type_(this: &Highlight) -> HighlightType;
     #[cfg(web_sys_unstable_apis)]
     #[cfg(feature = "HighlightType")]
-    # [wasm_bindgen (structural , method , setter , js_class = "Highlight" , js_name = type)]
+    #[wasm_bindgen(method, setter, js_class = "Highlight", js_name = "type")]
     #[doc = "Setter for the `type` field of this object."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/Highlight/type)"]
@@ -87,7 +87,7 @@ extern "C" {
     pub fn new(initial_ranges: &[AbstractRange]) -> Result<Highlight, JsValue>;
     #[cfg(web_sys_unstable_apis)]
     #[cfg(feature = "AbstractRange")]
-    # [wasm_bindgen (method , structural , js_class = "Highlight" , js_name = add)]
+    #[wasm_bindgen(method, js_class = "Highlight")]
     #[doc = "The `add()` method."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/Highlight/add)"]
@@ -98,7 +98,7 @@ extern "C" {
     #[doc = "[described in the `wasm-bindgen` guide](https://wasm-bindgen.github.io/wasm-bindgen/web-sys/unstable-apis.html)*"]
     pub fn add(this: &Highlight, value: &AbstractRange) -> Highlight;
     #[cfg(web_sys_unstable_apis)]
-    # [wasm_bindgen (method , structural , js_class = "Highlight" , js_name = clear)]
+    #[wasm_bindgen(method, js_class = "Highlight")]
     #[doc = "The `clear()` method."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/Highlight/clear)"]
@@ -110,7 +110,7 @@ extern "C" {
     pub fn clear(this: &Highlight);
     #[cfg(web_sys_unstable_apis)]
     #[cfg(feature = "AbstractRange")]
-    # [wasm_bindgen (method , structural , js_class = "Highlight" , js_name = delete)]
+    #[wasm_bindgen(method, js_class = "Highlight")]
     #[doc = "The `delete()` method."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/Highlight/delete)"]
@@ -122,7 +122,7 @@ extern "C" {
     pub fn delete(this: &Highlight, value: &AbstractRange) -> bool;
     #[cfg(web_sys_unstable_apis)]
     #[cfg(feature = "AbstractRange")]
-    # [wasm_bindgen (catch , method , structural , js_class = "Highlight" , js_name = forEach)]
+    #[wasm_bindgen(catch, method, js_class = "Highlight", js_name = "forEach")]
     #[doc = "The `forEach()` method."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/Highlight/forEach)"]
@@ -137,7 +137,7 @@ extern "C" {
     ) -> Result<(), JsValue>;
     #[cfg(web_sys_unstable_apis)]
     #[cfg(feature = "AbstractRange")]
-    # [wasm_bindgen (method , structural , js_class = "Highlight" , js_name = has)]
+    #[wasm_bindgen(method, js_class = "Highlight")]
     #[doc = "The `has()` method."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/Highlight/has)"]
@@ -149,7 +149,7 @@ extern "C" {
     pub fn has(this: &Highlight, value: &AbstractRange) -> bool;
     #[cfg(web_sys_unstable_apis)]
     #[cfg(feature = "AbstractRange")]
-    # [wasm_bindgen (method , structural , js_class = "Highlight" , js_name = entries)]
+    #[wasm_bindgen(method, js_class = "Highlight")]
     #[doc = "The `entries()` method."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/Highlight/entries)"]
@@ -163,7 +163,7 @@ extern "C" {
     ) -> ::js_sys::Iterator<::js_sys::ArrayTuple<(AbstractRange, AbstractRange)>>;
     #[cfg(web_sys_unstable_apis)]
     #[cfg(feature = "AbstractRange")]
-    # [wasm_bindgen (method , structural , js_class = "Highlight" , js_name = keys)]
+    #[wasm_bindgen(method, js_class = "Highlight")]
     #[doc = "The `keys()` method."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/Highlight/keys)"]
@@ -175,7 +175,7 @@ extern "C" {
     pub fn keys(this: &Highlight) -> ::js_sys::Iterator<AbstractRange>;
     #[cfg(web_sys_unstable_apis)]
     #[cfg(feature = "AbstractRange")]
-    # [wasm_bindgen (method , structural , js_class = "Highlight" , js_name = values)]
+    #[wasm_bindgen(method, js_class = "Highlight")]
     #[doc = "The `values()` method."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/Highlight/values)"]

@@ -1,4 +1,4 @@
-use crate::util::{camel_case_ident, leading_colon_path_ty, raw_ident, rust_ident, shared_ref};
+use crate::util::{camel_case_ident, leading_colon_path_ty, rust_ident, shared_ref};
 use proc_macro2::Literal;
 use proc_macro2::TokenStream;
 use quote::format_ident;
@@ -302,7 +302,6 @@ pub struct InterfaceAttribute {
     pub deprecated: Option<Option<String>>,
     pub ty: Type,
     pub is_static: bool,
-    pub structural: bool,
     pub catch: bool,
     pub kind: InterfaceAttributeKind,
     pub unstable: bool,
@@ -327,7 +326,6 @@ impl InterfaceAttribute {
             deprecated,
             ty,
             is_static,
-            structural,
             catch,
             kind,
             unstable,
@@ -367,12 +365,6 @@ impl InterfaceAttribute {
         features.insert(parent_name.to_string());
 
         let features_doc = required_doc_string(options, &features);
-
-        let structural = if *structural {
-            quote!(structural,)
-        } else {
-            quote!(final,)
-        };
 
         let (method, this) = if *is_static {
             (quote!( static_method_of = #parent_name, ), None)
@@ -428,13 +420,10 @@ impl InterfaceAttribute {
         ));
         let doc_req = doc_requirements(&features_doc, unstable_for_docs);
 
-        let js_name = raw_ident(js_name);
-
         quote! {
             #unstable_attr
             #cfg_features
             #[wasm_bindgen(
-                #structural
                 #catch
                 #method
                 #attr
@@ -468,7 +457,6 @@ pub struct InterfaceMethod<'a> {
     pub ret_wbg_ty: Option<WbgType<'a>>,
     pub kind: InterfaceMethodKind,
     pub is_static: bool,
-    pub structural: bool,
     pub catch: bool,
     pub variadic: bool,
     pub unstable: bool,
@@ -521,7 +509,6 @@ impl InterfaceMethod<'_> {
             ret_wbg_ty,
             kind,
             is_static,
-            structural,
             catch,
             variadic,
             unstable,
@@ -585,8 +572,7 @@ impl InterfaceMethod<'_> {
                 )
             }
             InterfaceMethodKind::Regular => {
-                {
-                    let js_name = raw_ident(js_name);
+                if js_name != &name.to_string() {
                     extra_args.push(quote!( js_name = #js_name ));
                 }
                 let method = if *is_static {
@@ -666,16 +652,7 @@ impl InterfaceMethod<'_> {
         } else if *is_static {
             (quote!( static_method_of = #parent_name, ), None)
         } else {
-            let structural = if *structural {
-                quote!(structural)
-            } else {
-                quote!(final)
-            };
-
-            (
-                quote!( method, #structural, ),
-                Some(quote!( this: &#parent_name, )),
-            )
+            (quote!(method,), Some(quote!( this: &#parent_name, )))
         };
 
         let variadic_attr = generate_variadic(*variadic);
@@ -806,7 +783,6 @@ impl Interface<'_> {
             Some(msg) => quote!( #[deprecated(note = #msg)] ),
             None => quote!( #[deprecated] ),
         });
-        let js_ident = raw_ident(js_name);
 
         quote! {
             #![allow(unused_imports)]
@@ -822,7 +798,7 @@ impl Interface<'_> {
                     #prefixes
                     #(#extends)*
                     extends = ::js_sys::Object,
-                    js_name = #js_ident,
+                    js_name = #js_name,
                     typescript_type = #js_name
                 )]
                 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1098,8 +1074,6 @@ impl Dictionary {
             Some(msg) => quote!( #[deprecated(note = #msg)] ),
             None => quote!( #[deprecated] ),
         });
-
-        let js_name = raw_ident(js_name);
 
         // Build constructor variants. For each required field with multiple setter
         // variants (union types), we expand into multiple constructors: new() for the
@@ -1407,8 +1381,6 @@ impl NamespaceAttribute {
         ));
         let doc_req = doc_requirements(&features_doc, *unstable);
 
-        let js_name_ident = raw_ident(js_name);
-
         quote! {
             #unstable_attr
             #cfg_features
@@ -1417,7 +1389,7 @@ impl NamespaceAttribute {
                 static_method_of = #ns_type_name,
                 js_class = #parent_js_name,
                 #attr
-                js_name = #js_name_ident
+                js_name = #js_name
             )]
             #doc_desc
             #doc_req
@@ -1481,8 +1453,6 @@ impl Function<'_> {
 
         let unstable_attr = maybe_unstable_attr(*unstable);
 
-        let js_namespace = raw_ident(&parent_js_name);
-
         let doc_desc_str = format!(
             "The `{parent_js_name}.{js_name}()` function.\n\n{}",
             mdn_doc(&parent_js_name, Some(js_name))
@@ -1520,7 +1490,11 @@ impl Function<'_> {
 
         let variadic_attr = generate_variadic(*variadic);
 
-        let js_name_ident = raw_ident(js_name);
+        let js_name_attr = if js_name != &name.to_string() {
+            Some(quote!(js_name = #js_name,))
+        } else {
+            None
+        };
 
         // Generate arguments
         let arguments = generate_arguments(
@@ -1548,8 +1522,8 @@ impl Function<'_> {
             #[wasm_bindgen(
                 #catch_attr
                 #variadic_attr
-                js_namespace = #js_namespace,
-                js_name = #js_name_ident
+                js_namespace = #parent_js_name,
+                #js_name_attr
             )]
             #doc_desc
             #doc_req
@@ -1589,7 +1563,6 @@ impl Namespace<'_> {
         // For namespace attributes, we need a type binding that represents the namespace
         // so we can use static_method_of to access properties on it
         let ns_type_name = rust_ident(&format!("JsNamespace{}", camel_case_ident(js_name)));
-        let js_namespace = raw_ident(js_name);
 
         let attributes = attributes
             .iter()
@@ -1603,7 +1576,7 @@ impl Namespace<'_> {
             Some(quote! {
                 #[wasm_bindgen]
                 extern "C" {
-                    #[wasm_bindgen(js_name = #js_namespace)]
+                    #[wasm_bindgen(js_name = #js_name)]
                     pub type #ns_type_name;
                 }
             })

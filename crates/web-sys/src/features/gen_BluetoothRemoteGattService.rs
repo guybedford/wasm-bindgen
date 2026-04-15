@@ -5,7 +5,7 @@ use wasm_bindgen::prelude::*;
 #[cfg(web_sys_unstable_apis)]
 #[wasm_bindgen]
 extern "C" {
-    # [wasm_bindgen (extends = EventTarget , extends = :: js_sys :: Object , js_name = BluetoothRemoteGATTService , typescript_type = "BluetoothRemoteGATTService")]
+    # [wasm_bindgen (extends = EventTarget , extends = :: js_sys :: Object , js_name = "BluetoothRemoteGATTService" , typescript_type = "BluetoothRemoteGATTService")]
     #[derive(Debug, Clone, PartialEq, Eq)]
     #[doc = "The `BluetoothRemoteGattService` class."]
     #[doc = ""]
@@ -18,7 +18,12 @@ extern "C" {
     pub type BluetoothRemoteGattService;
     #[cfg(web_sys_unstable_apis)]
     #[cfg(feature = "BluetoothDevice")]
-    # [wasm_bindgen (structural , method , getter , js_class = "BluetoothRemoteGATTService" , js_name = device)]
+    #[wasm_bindgen(
+        method,
+        getter,
+        js_class = "BluetoothRemoteGATTService",
+        js_name = "device"
+    )]
     #[doc = "Getter for the `device` field of this object."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/BluetoothRemoteGATTService/device)"]
@@ -29,7 +34,12 @@ extern "C" {
     #[doc = "[described in the `wasm-bindgen` guide](https://wasm-bindgen.github.io/wasm-bindgen/web-sys/unstable-apis.html)*"]
     pub fn device(this: &BluetoothRemoteGattService) -> BluetoothDevice;
     #[cfg(web_sys_unstable_apis)]
-    # [wasm_bindgen (structural , method , getter , js_class = "BluetoothRemoteGATTService" , js_name = uuid)]
+    #[wasm_bindgen(
+        method,
+        getter,
+        js_class = "BluetoothRemoteGATTService",
+        js_name = "uuid"
+    )]
     #[doc = "Getter for the `uuid` field of this object."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/BluetoothRemoteGATTService/uuid)"]
@@ -40,7 +50,12 @@ extern "C" {
     #[doc = "[described in the `wasm-bindgen` guide](https://wasm-bindgen.github.io/wasm-bindgen/web-sys/unstable-apis.html)*"]
     pub fn uuid(this: &BluetoothRemoteGattService) -> ::alloc::string::String;
     #[cfg(web_sys_unstable_apis)]
-    # [wasm_bindgen (structural , method , getter , js_class = "BluetoothRemoteGATTService" , js_name = isPrimary)]
+    #[wasm_bindgen(
+        method,
+        getter,
+        js_class = "BluetoothRemoteGATTService",
+        js_name = "isPrimary"
+    )]
     #[doc = "Getter for the `isPrimary` field of this object."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/BluetoothRemoteGATTService/isPrimary)"]
@@ -51,7 +66,12 @@ extern "C" {
     #[doc = "[described in the `wasm-bindgen` guide](https://wasm-bindgen.github.io/wasm-bindgen/web-sys/unstable-apis.html)*"]
     pub fn is_primary(this: &BluetoothRemoteGattService) -> bool;
     #[cfg(web_sys_unstable_apis)]
-    # [wasm_bindgen (structural , method , getter , js_class = "BluetoothRemoteGATTService" , js_name = oncharacteristicvaluechanged)]
+    #[wasm_bindgen(
+        method,
+        getter,
+        js_class = "BluetoothRemoteGATTService",
+        js_name = "oncharacteristicvaluechanged"
+    )]
     #[doc = "Getter for the `oncharacteristicvaluechanged` field of this object."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/BluetoothRemoteGATTService/oncharacteristicvaluechanged)"]
@@ -64,7 +84,12 @@ extern "C" {
         this: &BluetoothRemoteGattService,
     ) -> Option<::js_sys::Function>;
     #[cfg(web_sys_unstable_apis)]
-    # [wasm_bindgen (structural , method , setter , js_class = "BluetoothRemoteGATTService" , js_name = oncharacteristicvaluechanged)]
+    #[wasm_bindgen(
+        method,
+        setter,
+        js_class = "BluetoothRemoteGATTService",
+        js_name = "oncharacteristicvaluechanged"
+    )]
     #[doc = "Setter for the `oncharacteristicvaluechanged` field of this object."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/BluetoothRemoteGATTService/oncharacteristicvaluechanged)"]
@@ -78,7 +103,12 @@ extern "C" {
         value: Option<&::js_sys::Function>,
     );
     #[cfg(web_sys_unstable_apis)]
-    # [wasm_bindgen (structural , method , getter , js_class = "BluetoothRemoteGATTService" , js_name = onserviceadded)]
+    #[wasm_bindgen(
+        method,
+        getter,
+        js_class = "BluetoothRemoteGATTService",
+        js_name = "onserviceadded"
+    )]
     #[doc = "Getter for the `onserviceadded` field of this object."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/BluetoothRemoteGATTService/onserviceadded)"]
@@ -89,7 +119,12 @@ extern "C" {
     #[doc = "[described in the `wasm-bindgen` guide](https://wasm-bindgen.github.io/wasm-bindgen/web-sys/unstable-apis.html)*"]
     pub fn onserviceadded(this: &BluetoothRemoteGattService) -> Option<::js_sys::Function>;
     #[cfg(web_sys_unstable_apis)]
-    # [wasm_bindgen (structural , method , setter , js_class = "BluetoothRemoteGATTService" , js_name = onserviceadded)]
+    #[wasm_bindgen(
+        method,
+        setter,
+        js_class = "BluetoothRemoteGATTService",
+        js_name = "onserviceadded"
+    )]
     #[doc = "Setter for the `onserviceadded` field of this object."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/BluetoothRemoteGATTService/onserviceadded)"]
@@ -103,7 +138,12 @@ extern "C" {
         value: Option<&::js_sys::Function>,
     );
     #[cfg(web_sys_unstable_apis)]
-    # [wasm_bindgen (structural , method , getter , js_class = "BluetoothRemoteGATTService" , js_name = onservicechanged)]
+    #[wasm_bindgen(
+        method,
+        getter,
+        js_class = "BluetoothRemoteGATTService",
+        js_name = "onservicechanged"
+    )]
     #[doc = "Getter for the `onservicechanged` field of this object."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/BluetoothRemoteGATTService/onservicechanged)"]
@@ -114,7 +154,12 @@ extern "C" {
     #[doc = "[described in the `wasm-bindgen` guide](https://wasm-bindgen.github.io/wasm-bindgen/web-sys/unstable-apis.html)*"]
     pub fn onservicechanged(this: &BluetoothRemoteGattService) -> Option<::js_sys::Function>;
     #[cfg(web_sys_unstable_apis)]
-    # [wasm_bindgen (structural , method , setter , js_class = "BluetoothRemoteGATTService" , js_name = onservicechanged)]
+    #[wasm_bindgen(
+        method,
+        setter,
+        js_class = "BluetoothRemoteGATTService",
+        js_name = "onservicechanged"
+    )]
     #[doc = "Setter for the `onservicechanged` field of this object."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/BluetoothRemoteGATTService/onservicechanged)"]
@@ -128,7 +173,12 @@ extern "C" {
         value: Option<&::js_sys::Function>,
     );
     #[cfg(web_sys_unstable_apis)]
-    # [wasm_bindgen (structural , method , getter , js_class = "BluetoothRemoteGATTService" , js_name = onserviceremoved)]
+    #[wasm_bindgen(
+        method,
+        getter,
+        js_class = "BluetoothRemoteGATTService",
+        js_name = "onserviceremoved"
+    )]
     #[doc = "Getter for the `onserviceremoved` field of this object."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/BluetoothRemoteGATTService/onserviceremoved)"]
@@ -139,7 +189,12 @@ extern "C" {
     #[doc = "[described in the `wasm-bindgen` guide](https://wasm-bindgen.github.io/wasm-bindgen/web-sys/unstable-apis.html)*"]
     pub fn onserviceremoved(this: &BluetoothRemoteGattService) -> Option<::js_sys::Function>;
     #[cfg(web_sys_unstable_apis)]
-    # [wasm_bindgen (structural , method , setter , js_class = "BluetoothRemoteGATTService" , js_name = onserviceremoved)]
+    #[wasm_bindgen(
+        method,
+        setter,
+        js_class = "BluetoothRemoteGATTService",
+        js_name = "onserviceremoved"
+    )]
     #[doc = "Setter for the `onserviceremoved` field of this object."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/BluetoothRemoteGATTService/onserviceremoved)"]
@@ -154,7 +209,11 @@ extern "C" {
     );
     #[cfg(web_sys_unstable_apis)]
     #[cfg(feature = "BluetoothRemoteGattCharacteristic")]
-    # [wasm_bindgen (method , structural , js_class = "BluetoothRemoteGATTService" , js_name = getCharacteristic)]
+    #[wasm_bindgen(
+        method,
+        js_class = "BluetoothRemoteGATTService",
+        js_name = "getCharacteristic"
+    )]
     #[doc = "The `getCharacteristic()` method."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/BluetoothRemoteGATTService/getCharacteristic)"]
@@ -169,7 +228,11 @@ extern "C" {
     ) -> ::js_sys::Promise<BluetoothRemoteGattCharacteristic>;
     #[cfg(web_sys_unstable_apis)]
     #[cfg(feature = "BluetoothRemoteGattCharacteristic")]
-    # [wasm_bindgen (method , structural , js_class = "BluetoothRemoteGATTService" , js_name = getCharacteristic)]
+    #[wasm_bindgen(
+        method,
+        js_class = "BluetoothRemoteGATTService",
+        js_name = "getCharacteristic"
+    )]
     #[doc = "The `getCharacteristic()` method."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/BluetoothRemoteGATTService/getCharacteristic)"]
@@ -184,7 +247,11 @@ extern "C" {
     ) -> ::js_sys::Promise<BluetoothRemoteGattCharacteristic>;
     #[cfg(web_sys_unstable_apis)]
     #[cfg(feature = "BluetoothRemoteGattCharacteristic")]
-    # [wasm_bindgen (method , structural , js_class = "BluetoothRemoteGATTService" , js_name = getCharacteristics)]
+    #[wasm_bindgen(
+        method,
+        js_class = "BluetoothRemoteGATTService",
+        js_name = "getCharacteristics"
+    )]
     #[doc = "The `getCharacteristics()` method."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/BluetoothRemoteGATTService/getCharacteristics)"]
@@ -198,7 +265,11 @@ extern "C" {
     ) -> ::js_sys::Promise<::js_sys::Array<BluetoothRemoteGattCharacteristic>>;
     #[cfg(web_sys_unstable_apis)]
     #[cfg(feature = "BluetoothRemoteGattCharacteristic")]
-    # [wasm_bindgen (method , structural , js_class = "BluetoothRemoteGATTService" , js_name = getCharacteristics)]
+    #[wasm_bindgen(
+        method,
+        js_class = "BluetoothRemoteGATTService",
+        js_name = "getCharacteristics"
+    )]
     #[doc = "The `getCharacteristics()` method."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/BluetoothRemoteGATTService/getCharacteristics)"]
@@ -213,7 +284,11 @@ extern "C" {
     ) -> ::js_sys::Promise<::js_sys::Array<BluetoothRemoteGattCharacteristic>>;
     #[cfg(web_sys_unstable_apis)]
     #[cfg(feature = "BluetoothRemoteGattCharacteristic")]
-    # [wasm_bindgen (method , structural , js_class = "BluetoothRemoteGATTService" , js_name = getCharacteristics)]
+    #[wasm_bindgen(
+        method,
+        js_class = "BluetoothRemoteGATTService",
+        js_name = "getCharacteristics"
+    )]
     #[doc = "The `getCharacteristics()` method."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/BluetoothRemoteGATTService/getCharacteristics)"]
@@ -227,7 +302,11 @@ extern "C" {
         characteristic: u32,
     ) -> ::js_sys::Promise<::js_sys::Array<BluetoothRemoteGattCharacteristic>>;
     #[cfg(web_sys_unstable_apis)]
-    # [wasm_bindgen (method , structural , js_class = "BluetoothRemoteGATTService" , js_name = getIncludedService)]
+    #[wasm_bindgen(
+        method,
+        js_class = "BluetoothRemoteGATTService",
+        js_name = "getIncludedService"
+    )]
     #[doc = "The `getIncludedService()` method."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/BluetoothRemoteGATTService/getIncludedService)"]
@@ -241,7 +320,11 @@ extern "C" {
         service: &str,
     ) -> ::js_sys::Promise<BluetoothRemoteGattService>;
     #[cfg(web_sys_unstable_apis)]
-    # [wasm_bindgen (method , structural , js_class = "BluetoothRemoteGATTService" , js_name = getIncludedService)]
+    #[wasm_bindgen(
+        method,
+        js_class = "BluetoothRemoteGATTService",
+        js_name = "getIncludedService"
+    )]
     #[doc = "The `getIncludedService()` method."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/BluetoothRemoteGATTService/getIncludedService)"]
@@ -255,7 +338,11 @@ extern "C" {
         service: u32,
     ) -> ::js_sys::Promise<BluetoothRemoteGattService>;
     #[cfg(web_sys_unstable_apis)]
-    # [wasm_bindgen (method , structural , js_class = "BluetoothRemoteGATTService" , js_name = getIncludedServices)]
+    #[wasm_bindgen(
+        method,
+        js_class = "BluetoothRemoteGATTService",
+        js_name = "getIncludedServices"
+    )]
     #[doc = "The `getIncludedServices()` method."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/BluetoothRemoteGATTService/getIncludedServices)"]
@@ -268,7 +355,11 @@ extern "C" {
         this: &BluetoothRemoteGattService,
     ) -> ::js_sys::Promise<::js_sys::Array<BluetoothRemoteGattService>>;
     #[cfg(web_sys_unstable_apis)]
-    # [wasm_bindgen (method , structural , js_class = "BluetoothRemoteGATTService" , js_name = getIncludedServices)]
+    #[wasm_bindgen(
+        method,
+        js_class = "BluetoothRemoteGATTService",
+        js_name = "getIncludedServices"
+    )]
     #[doc = "The `getIncludedServices()` method."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/BluetoothRemoteGATTService/getIncludedServices)"]
@@ -282,7 +373,11 @@ extern "C" {
         service: &str,
     ) -> ::js_sys::Promise<::js_sys::Array<BluetoothRemoteGattService>>;
     #[cfg(web_sys_unstable_apis)]
-    # [wasm_bindgen (method , structural , js_class = "BluetoothRemoteGATTService" , js_name = getIncludedServices)]
+    #[wasm_bindgen(
+        method,
+        js_class = "BluetoothRemoteGATTService",
+        js_name = "getIncludedServices"
+    )]
     #[doc = "The `getIncludedServices()` method."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/BluetoothRemoteGATTService/getIncludedServices)"]

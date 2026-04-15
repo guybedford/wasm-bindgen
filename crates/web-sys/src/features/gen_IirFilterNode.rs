@@ -4,7 +4,7 @@ use super::*;
 use wasm_bindgen::prelude::*;
 #[wasm_bindgen]
 extern "C" {
-    # [wasm_bindgen (extends = AudioNode , extends = EventTarget , extends = :: js_sys :: Object , js_name = IIRFilterNode , typescript_type = "IIRFilterNode")]
+    # [wasm_bindgen (extends = AudioNode , extends = EventTarget , extends = :: js_sys :: Object , js_name = "IIRFilterNode" , typescript_type = "IIRFilterNode")]
     #[derive(Debug, Clone, PartialEq, Eq)]
     #[doc = "The `IirFilterNode` class."]
     #[doc = ""]
@@ -23,7 +23,7 @@ extern "C" {
         context: &BaseAudioContext,
         options: &IirFilterOptions,
     ) -> Result<IirFilterNode, JsValue>;
-    # [wasm_bindgen (method , structural , js_class = "IIRFilterNode" , js_name = getFrequencyResponse)]
+    #[wasm_bindgen(method, js_class = "IIRFilterNode", js_name = "getFrequencyResponse")]
     #[doc = "The `getFrequencyResponse()` method."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/IIRFilterNode/getFrequencyResponse)"]
@@ -35,7 +35,7 @@ extern "C" {
         mag_response: &mut [f32],
         phase_response: &mut [f32],
     );
-    # [wasm_bindgen (method , structural , js_class = "IIRFilterNode" , js_name = getFrequencyResponse)]
+    #[wasm_bindgen(method, js_class = "IIRFilterNode", js_name = "getFrequencyResponse")]
     #[doc = "The `getFrequencyResponse()` method."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/IIRFilterNode/getFrequencyResponse)"]
@@ -47,7 +47,7 @@ extern "C" {
         mag_response: &mut [f32],
         phase_response: &mut [f32],
     );
-    # [wasm_bindgen (method , structural , js_class = "IIRFilterNode" , js_name = getFrequencyResponse)]
+    #[wasm_bindgen(method, js_class = "IIRFilterNode", js_name = "getFrequencyResponse")]
     #[doc = "The `getFrequencyResponse()` method."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/IIRFilterNode/getFrequencyResponse)"]
@@ -59,7 +59,7 @@ extern "C" {
         mag_response: &::js_sys::Float32Array,
         phase_response: &mut [f32],
     );
-    # [wasm_bindgen (method , structural , js_class = "IIRFilterNode" , js_name = getFrequencyResponse)]
+    #[wasm_bindgen(method, js_class = "IIRFilterNode", js_name = "getFrequencyResponse")]
     #[doc = "The `getFrequencyResponse()` method."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/IIRFilterNode/getFrequencyResponse)"]
@@ -71,7 +71,7 @@ extern "C" {
         mag_response: &::js_sys::Float32Array,
         phase_response: &mut [f32],
     );
-    # [wasm_bindgen (method , structural , js_class = "IIRFilterNode" , js_name = getFrequencyResponse)]
+    #[wasm_bindgen(method, js_class = "IIRFilterNode", js_name = "getFrequencyResponse")]
     #[doc = "The `getFrequencyResponse()` method."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/IIRFilterNode/getFrequencyResponse)"]
@@ -83,7 +83,7 @@ extern "C" {
         mag_response: &mut [f32],
         phase_response: &::js_sys::Float32Array,
     );
-    # [wasm_bindgen (method , structural , js_class = "IIRFilterNode" , js_name = getFrequencyResponse)]
+    #[wasm_bindgen(method, js_class = "IIRFilterNode", js_name = "getFrequencyResponse")]
     #[doc = "The `getFrequencyResponse()` method."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/IIRFilterNode/getFrequencyResponse)"]
@@ -95,7 +95,7 @@ extern "C" {
         mag_response: &mut [f32],
         phase_response: &::js_sys::Float32Array,
     );
-    # [wasm_bindgen (method , structural , js_class = "IIRFilterNode" , js_name = getFrequencyResponse)]
+    #[wasm_bindgen(method, js_class = "IIRFilterNode", js_name = "getFrequencyResponse")]
     #[doc = "The `getFrequencyResponse()` method."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/IIRFilterNode/getFrequencyResponse)"]
@@ -107,7 +107,7 @@ extern "C" {
         mag_response: &::js_sys::Float32Array,
         phase_response: &::js_sys::Float32Array,
     );
-    # [wasm_bindgen (method , structural , js_class = "IIRFilterNode" , js_name = getFrequencyResponse)]
+    #[wasm_bindgen(method, js_class = "IIRFilterNode", js_name = "getFrequencyResponse")]
     #[doc = "The `getFrequencyResponse()` method."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/IIRFilterNode/getFrequencyResponse)"]

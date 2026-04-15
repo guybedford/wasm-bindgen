@@ -4,7 +4,7 @@ use super::*;
 use wasm_bindgen::prelude::*;
 #[wasm_bindgen]
 extern "C" {
-    # [wasm_bindgen (extends = :: js_sys :: Object , js_name = ReadableStreamBYOBRequest , typescript_type = "ReadableStreamBYOBRequest")]
+    # [wasm_bindgen (extends = :: js_sys :: Object , js_name = "ReadableStreamBYOBRequest" , typescript_type = "ReadableStreamBYOBRequest")]
     #[derive(Debug, Clone, PartialEq, Eq)]
     #[doc = "The `ReadableStreamByobRequest` class."]
     #[doc = ""]
@@ -12,14 +12,24 @@ extern "C" {
     #[doc = ""]
     #[doc = "*This API requires the following crate features to be activated: `ReadableStreamByobRequest`*"]
     pub type ReadableStreamByobRequest;
-    # [wasm_bindgen (structural , method , getter , js_class = "ReadableStreamBYOBRequest" , js_name = view)]
+    #[wasm_bindgen(
+        method,
+        getter,
+        js_class = "ReadableStreamBYOBRequest",
+        js_name = "view"
+    )]
     #[doc = "Getter for the `view` field of this object."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/ReadableStreamBYOBRequest/view)"]
     #[doc = ""]
     #[doc = "*This API requires the following crate features to be activated: `ReadableStreamByobRequest`*"]
     pub fn view(this: &ReadableStreamByobRequest) -> Option<::js_sys::Object>;
-    # [wasm_bindgen (catch , method , structural , js_class = "ReadableStreamBYOBRequest" , js_name = respond)]
+    #[wasm_bindgen(
+        catch,
+        method,
+        js_class = "ReadableStreamBYOBRequest",
+        js_name = "respond"
+    )]
     #[doc = "The `respond()` method."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/ReadableStreamBYOBRequest/respond)"]
@@ -29,7 +39,12 @@ extern "C" {
         this: &ReadableStreamByobRequest,
         bytes_written: u32,
     ) -> Result<(), JsValue>;
-    # [wasm_bindgen (catch , method , structural , js_class = "ReadableStreamBYOBRequest" , js_name = respond)]
+    #[wasm_bindgen(
+        catch,
+        method,
+        js_class = "ReadableStreamBYOBRequest",
+        js_name = "respond"
+    )]
     #[doc = "The `respond()` method."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/ReadableStreamBYOBRequest/respond)"]
@@ -39,7 +54,12 @@ extern "C" {
         this: &ReadableStreamByobRequest,
         bytes_written: f64,
     ) -> Result<(), JsValue>;
-    # [wasm_bindgen (catch , method , structural , js_class = "ReadableStreamBYOBRequest" , js_name = respondWithNewView)]
+    #[wasm_bindgen(
+        catch,
+        method,
+        js_class = "ReadableStreamBYOBRequest",
+        js_name = "respondWithNewView"
+    )]
     #[doc = "The `respondWithNewView()` method."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/ReadableStreamBYOBRequest/respondWithNewView)"]
@@ -49,7 +69,12 @@ extern "C" {
         this: &ReadableStreamByobRequest,
         view: &::js_sys::Object,
     ) -> Result<(), JsValue>;
-    # [wasm_bindgen (catch , method , structural , js_class = "ReadableStreamBYOBRequest" , js_name = respondWithNewView)]
+    #[wasm_bindgen(
+        catch,
+        method,
+        js_class = "ReadableStreamBYOBRequest",
+        js_name = "respondWithNewView"
+    )]
     #[doc = "The `respondWithNewView()` method."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/ReadableStreamBYOBRequest/respondWithNewView)"]
@@ -59,7 +84,12 @@ extern "C" {
         this: &ReadableStreamByobRequest,
         view: &mut [u8],
     ) -> Result<(), JsValue>;
-    # [wasm_bindgen (catch , method , structural , js_class = "ReadableStreamBYOBRequest" , js_name = respondWithNewView)]
+    #[wasm_bindgen(
+        catch,
+        method,
+        js_class = "ReadableStreamBYOBRequest",
+        js_name = "respondWithNewView"
+    )]
     #[doc = "The `respondWithNewView()` method."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/ReadableStreamBYOBRequest/respondWithNewView)"]

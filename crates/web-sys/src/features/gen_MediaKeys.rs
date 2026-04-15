@@ -4,7 +4,7 @@ use super::*;
 use wasm_bindgen::prelude::*;
 #[wasm_bindgen]
 extern "C" {
-    # [wasm_bindgen (extends = :: js_sys :: Object , js_name = MediaKeys , typescript_type = "MediaKeys")]
+    # [wasm_bindgen (extends = :: js_sys :: Object , js_name = "MediaKeys" , typescript_type = "MediaKeys")]
     #[derive(Debug, Clone, PartialEq, Eq)]
     #[doc = "The `MediaKeys` class."]
     #[doc = ""]
@@ -12,7 +12,7 @@ extern "C" {
     #[doc = ""]
     #[doc = "*This API requires the following crate features to be activated: `MediaKeys`*"]
     pub type MediaKeys;
-    # [wasm_bindgen (structural , method , getter , js_class = "MediaKeys" , js_name = keySystem)]
+    #[wasm_bindgen(method, getter, js_class = "MediaKeys", js_name = "keySystem")]
     #[doc = "Getter for the `keySystem` field of this object."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/MediaKeys/keySystem)"]
@@ -20,7 +20,7 @@ extern "C" {
     #[doc = "*This API requires the following crate features to be activated: `MediaKeys`*"]
     pub fn key_system(this: &MediaKeys) -> ::alloc::string::String;
     #[cfg(feature = "MediaKeySession")]
-    # [wasm_bindgen (catch , method , structural , js_class = "MediaKeys" , js_name = createSession)]
+    #[wasm_bindgen(catch, method, js_class = "MediaKeys", js_name = "createSession")]
     #[doc = "The `createSession()` method."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/MediaKeys/createSession)"]
@@ -28,7 +28,7 @@ extern "C" {
     #[doc = "*This API requires the following crate features to be activated: `MediaKeySession`, `MediaKeys`*"]
     pub fn create_session(this: &MediaKeys) -> Result<MediaKeySession, JsValue>;
     #[cfg(all(feature = "MediaKeySession", feature = "MediaKeySessionType",))]
-    # [wasm_bindgen (catch , method , structural , js_class = "MediaKeys" , js_name = createSession)]
+    #[wasm_bindgen(catch, method, js_class = "MediaKeys", js_name = "createSession")]
     #[doc = "The `createSession()` method."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/MediaKeys/createSession)"]
@@ -38,7 +38,7 @@ extern "C" {
         this: &MediaKeys,
         session_type: MediaKeySessionType,
     ) -> Result<MediaKeySession, JsValue>;
-    # [wasm_bindgen (method , structural , js_class = "MediaKeys" , js_name = getStatusForPolicy)]
+    #[wasm_bindgen(method, js_class = "MediaKeys", js_name = "getStatusForPolicy")]
     #[doc = "The `getStatusForPolicy()` method."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/MediaKeys/getStatusForPolicy)"]
@@ -46,7 +46,7 @@ extern "C" {
     #[doc = "*This API requires the following crate features to be activated: `MediaKeys`*"]
     pub fn get_status_for_policy(this: &MediaKeys) -> ::js_sys::Promise;
     #[cfg(feature = "MediaKeysPolicy")]
-    # [wasm_bindgen (method , structural , js_class = "MediaKeys" , js_name = getStatusForPolicy)]
+    #[wasm_bindgen(method, js_class = "MediaKeys", js_name = "getStatusForPolicy")]
     #[doc = "The `getStatusForPolicy()` method."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/MediaKeys/getStatusForPolicy)"]
@@ -56,7 +56,7 @@ extern "C" {
         this: &MediaKeys,
         policy: &MediaKeysPolicy,
     ) -> ::js_sys::Promise;
-    # [wasm_bindgen (method , structural , js_class = "MediaKeys" , js_name = setServerCertificate)]
+    #[wasm_bindgen(method, js_class = "MediaKeys", js_name = "setServerCertificate")]
     #[doc = "The `setServerCertificate()` method."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/MediaKeys/setServerCertificate)"]
@@ -66,7 +66,7 @@ extern "C" {
         this: &MediaKeys,
         server_certificate: &::js_sys::Object,
     ) -> ::js_sys::Promise;
-    # [wasm_bindgen (method , structural , js_class = "MediaKeys" , js_name = setServerCertificate)]
+    #[wasm_bindgen(method, js_class = "MediaKeys", js_name = "setServerCertificate")]
     #[doc = "The `setServerCertificate()` method."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/MediaKeys/setServerCertificate)"]
@@ -76,7 +76,7 @@ extern "C" {
         this: &MediaKeys,
         server_certificate: &mut [u8],
     ) -> ::js_sys::Promise;
-    # [wasm_bindgen (method , structural , js_class = "MediaKeys" , js_name = setServerCertificate)]
+    #[wasm_bindgen(method, js_class = "MediaKeys", js_name = "setServerCertificate")]
     #[doc = "The `setServerCertificate()` method."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/MediaKeys/setServerCertificate)"]

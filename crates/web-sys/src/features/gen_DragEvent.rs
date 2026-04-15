@@ -4,7 +4,7 @@ use super::*;
 use wasm_bindgen::prelude::*;
 #[wasm_bindgen]
 extern "C" {
-    # [wasm_bindgen (extends = MouseEvent , extends = UiEvent , extends = Event , extends = :: js_sys :: Object , js_name = DragEvent , typescript_type = "DragEvent")]
+    # [wasm_bindgen (extends = MouseEvent , extends = UiEvent , extends = Event , extends = :: js_sys :: Object , js_name = "DragEvent" , typescript_type = "DragEvent")]
     #[derive(Debug, Clone, PartialEq, Eq)]
     #[doc = "The `DragEvent` class."]
     #[doc = ""]
@@ -13,7 +13,7 @@ extern "C" {
     #[doc = "*This API requires the following crate features to be activated: `DragEvent`*"]
     pub type DragEvent;
     #[cfg(feature = "DataTransfer")]
-    # [wasm_bindgen (structural , method , getter , js_class = "DragEvent" , js_name = dataTransfer)]
+    #[wasm_bindgen(method, getter, js_class = "DragEvent", js_name = "dataTransfer")]
     #[doc = "Getter for the `dataTransfer` field of this object."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/DragEvent/dataTransfer)"]
@@ -38,21 +38,21 @@ extern "C" {
         type_: &str,
         event_init_dict: &DragEventInit,
     ) -> Result<DragEvent, JsValue>;
-    # [wasm_bindgen (method , structural , js_class = "DragEvent" , js_name = initDragEvent)]
+    #[wasm_bindgen(method, js_class = "DragEvent", js_name = "initDragEvent")]
     #[doc = "The `initDragEvent()` method."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/DragEvent/initDragEvent)"]
     #[doc = ""]
     #[doc = "*This API requires the following crate features to be activated: `DragEvent`*"]
     pub fn init_drag_event(this: &DragEvent, type_: &str);
-    # [wasm_bindgen (method , structural , js_class = "DragEvent" , js_name = initDragEvent)]
+    #[wasm_bindgen(method, js_class = "DragEvent", js_name = "initDragEvent")]
     #[doc = "The `initDragEvent()` method."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/DragEvent/initDragEvent)"]
     #[doc = ""]
     #[doc = "*This API requires the following crate features to be activated: `DragEvent`*"]
     pub fn init_drag_event_with_can_bubble(this: &DragEvent, type_: &str, can_bubble: bool);
-    # [wasm_bindgen (method , structural , js_class = "DragEvent" , js_name = initDragEvent)]
+    #[wasm_bindgen(method, js_class = "DragEvent", js_name = "initDragEvent")]
     #[doc = "The `initDragEvent()` method."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/DragEvent/initDragEvent)"]
@@ -65,7 +65,7 @@ extern "C" {
         cancelable: bool,
     );
     #[cfg(feature = "Window")]
-    # [wasm_bindgen (method , structural , js_class = "DragEvent" , js_name = initDragEvent)]
+    #[wasm_bindgen(method, js_class = "DragEvent", js_name = "initDragEvent")]
     #[doc = "The `initDragEvent()` method."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/DragEvent/initDragEvent)"]
@@ -79,7 +79,7 @@ extern "C" {
         a_view: Option<&Window>,
     );
     #[cfg(feature = "Window")]
-    # [wasm_bindgen (method , structural , js_class = "DragEvent" , js_name = initDragEvent)]
+    #[wasm_bindgen(method, js_class = "DragEvent", js_name = "initDragEvent")]
     #[doc = "The `initDragEvent()` method."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/DragEvent/initDragEvent)"]
@@ -94,7 +94,7 @@ extern "C" {
         a_detail: i32,
     );
     #[cfg(feature = "Window")]
-    # [wasm_bindgen (method , structural , js_class = "DragEvent" , js_name = initDragEvent)]
+    #[wasm_bindgen(method, js_class = "DragEvent", js_name = "initDragEvent")]
     #[doc = "The `initDragEvent()` method."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/DragEvent/initDragEvent)"]
@@ -110,7 +110,7 @@ extern "C" {
         a_screen_x: i32,
     );
     #[cfg(feature = "Window")]
-    # [wasm_bindgen (method , structural , js_class = "DragEvent" , js_name = initDragEvent)]
+    #[wasm_bindgen(method, js_class = "DragEvent", js_name = "initDragEvent")]
     #[doc = "The `initDragEvent()` method."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/DragEvent/initDragEvent)"]
@@ -127,7 +127,7 @@ extern "C" {
         a_screen_y: i32,
     );
     #[cfg(feature = "Window")]
-    # [wasm_bindgen (method , structural , js_class = "DragEvent" , js_name = initDragEvent)]
+    #[wasm_bindgen(method, js_class = "DragEvent", js_name = "initDragEvent")]
     #[doc = "The `initDragEvent()` method."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/DragEvent/initDragEvent)"]
@@ -145,7 +145,7 @@ extern "C" {
         a_client_x: i32,
     );
     #[cfg(feature = "Window")]
-    # [wasm_bindgen (method , structural , js_class = "DragEvent" , js_name = initDragEvent)]
+    #[wasm_bindgen(method, js_class = "DragEvent", js_name = "initDragEvent")]
     #[doc = "The `initDragEvent()` method."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/DragEvent/initDragEvent)"]
@@ -164,7 +164,7 @@ extern "C" {
         a_client_y: i32,
     );
     #[cfg(feature = "Window")]
-    # [wasm_bindgen (method , structural , js_class = "DragEvent" , js_name = initDragEvent)]
+    #[wasm_bindgen(method, js_class = "DragEvent", js_name = "initDragEvent")]
     #[doc = "The `initDragEvent()` method."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/DragEvent/initDragEvent)"]
@@ -184,7 +184,7 @@ extern "C" {
         a_ctrl_key: bool,
     );
     #[cfg(feature = "Window")]
-    # [wasm_bindgen (method , structural , js_class = "DragEvent" , js_name = initDragEvent)]
+    #[wasm_bindgen(method, js_class = "DragEvent", js_name = "initDragEvent")]
     #[doc = "The `initDragEvent()` method."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/DragEvent/initDragEvent)"]
@@ -205,7 +205,7 @@ extern "C" {
         a_alt_key: bool,
     );
     #[cfg(feature = "Window")]
-    # [wasm_bindgen (method , structural , js_class = "DragEvent" , js_name = initDragEvent)]
+    #[wasm_bindgen(method, js_class = "DragEvent", js_name = "initDragEvent")]
     #[doc = "The `initDragEvent()` method."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/DragEvent/initDragEvent)"]
@@ -227,7 +227,7 @@ extern "C" {
         a_shift_key: bool,
     );
     #[cfg(feature = "Window")]
-    # [wasm_bindgen (method , structural , js_class = "DragEvent" , js_name = initDragEvent)]
+    #[wasm_bindgen(method, js_class = "DragEvent", js_name = "initDragEvent")]
     #[doc = "The `initDragEvent()` method."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/DragEvent/initDragEvent)"]
@@ -250,7 +250,7 @@ extern "C" {
         a_meta_key: bool,
     );
     #[cfg(feature = "Window")]
-    # [wasm_bindgen (method , structural , js_class = "DragEvent" , js_name = initDragEvent)]
+    #[wasm_bindgen(method, js_class = "DragEvent", js_name = "initDragEvent")]
     #[doc = "The `initDragEvent()` method."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/DragEvent/initDragEvent)"]
@@ -274,7 +274,7 @@ extern "C" {
         a_button: u16,
     );
     #[cfg(all(feature = "EventTarget", feature = "Window",))]
-    # [wasm_bindgen (method , structural , js_class = "DragEvent" , js_name = initDragEvent)]
+    #[wasm_bindgen(method, js_class = "DragEvent", js_name = "initDragEvent")]
     #[doc = "The `initDragEvent()` method."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/DragEvent/initDragEvent)"]
@@ -299,7 +299,7 @@ extern "C" {
         a_related_target: Option<&EventTarget>,
     );
     #[cfg(all(feature = "DataTransfer", feature = "EventTarget", feature = "Window",))]
-    # [wasm_bindgen (method , structural , js_class = "DragEvent" , js_name = initDragEvent)]
+    #[wasm_bindgen(method, js_class = "DragEvent", js_name = "initDragEvent")]
     #[doc = "The `initDragEvent()` method."]
     #[doc = ""]
     #[doc = "[MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/DragEvent/initDragEvent)"]
