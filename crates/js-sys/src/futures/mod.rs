@@ -70,6 +70,9 @@ mod task {
     }
 }
 
+mod utils;
+pub use utils::*;
+
 /// Runs a Rust `Future` on the current thread.
 ///
 /// The `future` must be `'static` because it will be scheduled
