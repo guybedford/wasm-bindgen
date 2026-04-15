@@ -53,7 +53,7 @@ where
     I: IntoIterator,
     I::Item: IntoPromise<Output = T>,
 {
-    let array = crate::Array::<Promise<T>>::new();
+    let array = crate::Array::<Promise<T>>::new_typed();
     for p in promises {
         array.push(&p.into_promise());
     }
@@ -120,9 +120,7 @@ where
 ///     }
 /// }
 /// ```
-pub async fn all_settled<T, I>(
-    promises: I,
-) -> Result<crate::Array<crate::PromiseState<T>>, JsValue>
+pub async fn all_settled<T, I>(promises: I) -> Result<crate::Array<crate::PromiseState<T>>, JsValue>
 where
     T: JsGeneric + FromWasmAbi + 'static,
     I: IntoIterator,
@@ -183,6 +181,54 @@ where
     Promise::any_iterable(&collect_promises(promises)).await
 }
 
+/// Maps a tuple of `Promising` types to tuples of their resolution types.
+///
+/// For example, `(Promise<A>, Promise<B>): PromiseTuple` has
+/// `Resolved = (A, B)` and `Settled = (PromiseState<A>, PromiseState<B>)`.
+pub trait PromiseTuple: crate::JsTuple {
+    /// The tuple of resolved types, for `Promise.all`.
+    type Resolved: crate::JsTuple;
+    /// The tuple of settled types, for `Promise.allSettled`.
+    type Settled: crate::JsTuple;
+}
+
+macro_rules! impl_promise_tuple {
+    ($($T:ident),+) => {
+        impl<$($T: crate::Promising),+> PromiseTuple for ($($T,)+) {
+            type Resolved = ($($T::Resolution,)+);
+            type Settled = ($(crate::PromiseState<$T::Resolution>,)+);
+        }
+    };
+}
+
+impl_promise_tuple!(T1);
+impl_promise_tuple!(T1, T2);
+impl_promise_tuple!(T1, T2, T3);
+impl_promise_tuple!(T1, T2, T3, T4);
+impl_promise_tuple!(T1, T2, T3, T4, T5);
+impl_promise_tuple!(T1, T2, T3, T4, T5, T6);
+impl_promise_tuple!(T1, T2, T3, T4, T5, T6, T7);
+impl_promise_tuple!(T1, T2, T3, T4, T5, T6, T7, T8);
+
+impl<T: PromiseTuple> crate::ArrayTuple<T> {
+    /// Concurrently awaits all promises in this tuple using `Promise.all`.
+    ///
+    /// Returns a `Promise` that resolves to an `ArrayTuple` of the resolved
+    /// types. Use `.into_parts()` on the result to destructure into a Rust
+    /// tuple.
+    pub fn promise_all(&self) -> Promise<crate::ArrayTuple<T::Resolved>> {
+        use wasm_bindgen::JsCast as _;
+        Promise::all_iterable(self).unchecked_into()
+    }
+
+    /// Concurrently settles all promises in this tuple using
+    /// `Promise.allSettled`. Never rejects early.
+    pub fn promise_all_settled(&self) -> Promise<crate::ArrayTuple<T::Settled>> {
+        use wasm_bindgen::JsCast as _;
+        Promise::all_settled_iterable(self).unchecked_into()
+    }
+}
+
 /// Awaits multiple JavaScript `Promise`s of different types concurrently using
 /// `Promise.all`, returning an `ArrayTuple` of results.
 ///
@@ -209,10 +255,8 @@ where
 #[macro_export]
 macro_rules! join {
     ($($promise:expr),+ $(,)?) => {{
-        use $crate::wasm_bindgen::JsCast as _;
         let promises: $crate::ArrayTuple<_> = ($($promise,)+).into();
-        let result: $crate::Promise<_> = $crate::Promise::all_iterable(&promises).unchecked_into();
-        result
+        promises.promise_all()
     }};
 }
 
@@ -232,14 +276,11 @@ macro_rules! join {
 ///     fetch_promise,        // Promise<Response>
 ///     array_buffer_promise, // Promise<ArrayBuffer>
 /// ).await?;
-/// // Each element is a PromiseState<T> with .is_fulfilled(), .get_value(), .get_reason()
 /// ```
 #[macro_export]
 macro_rules! all_settled {
     ($($promise:expr),+ $(,)?) => {{
-        use $crate::wasm_bindgen::JsCast as _;
         let promises: $crate::ArrayTuple<_> = ($($promise,)+).into();
-        let result: $crate::Promise<_> = $crate::Promise::all_settled_iterable(&promises).unchecked_into();
-        result
+        promises.promise_all_settled()
     }};
 }

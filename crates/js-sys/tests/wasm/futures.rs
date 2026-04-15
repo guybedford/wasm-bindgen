@@ -157,9 +157,190 @@ async fn spawn_local_err_no_exception() {
     assert_eq!(rx.await.unwrap(), 42);
 }
 
-// ---------------------------------------------------------------------------
+// join_all
+
+#[wasm_bindgen_test]
+async fn join_all_resolves() {
+    use js_sys::{futures::join_all, Number};
+
+    let promises = vec![
+        Promise::resolve(&Number::from(1)),
+        Promise::resolve(&Number::from(2)),
+        Promise::resolve(&Number::from(3)),
+    ];
+    let results = join_all(promises).await.unwrap();
+    assert_eq!(results.length(), 3);
+    assert_eq!(results.get(0).value_of(), 1.0);
+    assert_eq!(results.get(1).value_of(), 2.0);
+    assert_eq!(results.get(2).value_of(), 3.0);
+}
+
+#[wasm_bindgen_test]
+async fn join_all_rejects_on_first_failure() {
+    use js_sys::{futures::join_all, Number};
+
+    let promises = vec![
+        Promise::resolve(&Number::from(1)),
+        Promise::<Number>::reject_typed(&JsValue::from("fail")),
+        Promise::resolve(&Number::from(3)),
+    ];
+    let err = join_all(promises).await.unwrap_err();
+    assert_eq!(err, "fail");
+}
+
+#[wasm_bindgen_test]
+async fn join_all_empty() {
+    use js_sys::{futures::join_all, Number};
+
+    let promises: Vec<Promise<Number>> = vec![];
+    let results = join_all(promises).await.unwrap();
+    assert_eq!(results.length(), 0);
+}
+
+// all_settled
+
+#[wasm_bindgen_test]
+async fn all_settled_collects_all() {
+    use js_sys::{futures::all_settled, Number};
+
+    let promises = vec![
+        Promise::resolve(&Number::from(1)),
+        Promise::<Number>::reject_typed(&JsValue::from("err")),
+        Promise::resolve(&Number::from(3)),
+    ];
+    let results = all_settled(promises).await.unwrap();
+    assert_eq!(results.length(), 3);
+
+    assert!(results.get(0).is_fulfilled());
+    assert_eq!(results.get(0).get_value().unwrap().value_of(), 1.0);
+
+    assert!(results.get(1).is_rejected());
+    assert_eq!(results.get(1).get_reason().unwrap(), "err");
+
+    assert!(results.get(2).is_fulfilled());
+    assert_eq!(results.get(2).get_value().unwrap().value_of(), 3.0);
+}
+
+// race
+
+#[wasm_bindgen_test]
+async fn race_returns_first() {
+    use js_sys::{futures::race, Number};
+
+    let promises = vec![
+        Promise::resolve(&Number::from(42)),
+        Promise::resolve(&Number::from(99)),
+    ];
+    let result: Number = race(promises).await.unwrap();
+    assert_eq!(result.value_of(), 42.0);
+}
+
+#[wasm_bindgen_test]
+async fn race_rejects_if_first_rejects() {
+    use js_sys::{futures::race, Number};
+
+    let promises = vec![
+        Promise::<Number>::reject_typed(&JsValue::from("fast")),
+        Promise::resolve(&Number::from(99)),
+    ];
+    let err = race(promises).await.unwrap_err();
+    assert_eq!(err, "fast");
+}
+
+// any
+
+#[wasm_bindgen_test]
+async fn any_returns_first_success() {
+    use js_sys::{futures::any, Number};
+
+    let promises = vec![
+        Promise::<Number>::reject_typed(&JsValue::from("err1")),
+        Promise::resolve(&Number::from(42)),
+        Promise::resolve(&Number::from(99)),
+    ];
+    let result: Number = any(promises).await.unwrap();
+    assert_eq!(result.value_of(), 42.0);
+}
+
+#[wasm_bindgen_test]
+async fn any_rejects_if_all_reject() {
+    use js_sys::{futures::any, Number};
+
+    let promises = vec![
+        Promise::<Number>::reject_typed(&JsValue::from("e1")),
+        Promise::<Number>::reject_typed(&JsValue::from("e2")),
+    ];
+    let err = any(promises).await;
+    assert!(err.is_err());
+}
+
+// IntoPromise for Future
+
+#[wasm_bindgen_test]
+async fn join_all_accepts_futures_via_map() {
+    use js_sys::futures::join_all;
+
+    let values = [10, 20, 30];
+    let futures = values
+        .iter()
+        .map(|&v| async move { Ok::<JsValue, JsValue>(JsValue::from(v)) });
+    let results = join_all(futures).await.unwrap();
+    assert_eq!(results.length(), 3);
+    assert_eq!(results.get(0), 10);
+    assert_eq!(results.get(1), 20);
+    assert_eq!(results.get(2), 30);
+}
+
+// join! macro
+
+#[wasm_bindgen_test]
+async fn join_macro_two() {
+    use js_sys::{JsString, Number};
+
+    let p1 = Promise::resolve(&Number::from(1));
+    let p2 = Promise::resolve(&JsString::from("hello"));
+    let (a, b) = js_sys::join!(p1, p2).await.unwrap().into_parts();
+    assert_eq!(a.value_of(), 1.0);
+    assert_eq!(b, "hello");
+}
+
+#[wasm_bindgen_test]
+async fn join_macro_three() {
+    use js_sys::Number;
+
+    let p1 = Promise::resolve(&Number::from(1));
+    let p2 = Promise::resolve(&Number::from(2));
+    let p3 = Promise::resolve(&Number::from(3));
+    let (a, b, c) = js_sys::join!(p1, p2, p3).await.unwrap().into_parts();
+    assert_eq!(a.value_of(), 1.0);
+    assert_eq!(b.value_of(), 2.0);
+    assert_eq!(c.value_of(), 3.0);
+}
+
+#[wasm_bindgen_test]
+async fn join_macro_single() {
+    use js_sys::Number;
+
+    let p1 = Promise::resolve(&Number::from(42));
+    let (a,) = js_sys::join!(p1).await.unwrap().into_parts();
+    assert_eq!(a.value_of(), 42.0);
+}
+
+// all_settled! macro
+
+#[wasm_bindgen_test]
+async fn all_settled_macro_mixed() {
+    use js_sys::Number;
+
+    let p1 = Promise::resolve(&Number::from(1));
+    let p2 = Promise::<Number>::reject_typed(&JsValue::from("err"));
+    let results = js_sys::all_settled!(p1, p2).await.unwrap();
+    let (s1, s2) = results.into_parts();
+    assert!(s1.is_fulfilled());
+    assert!(s2.is_rejected());
+}
+
 // Atomics / multithread-specific tests
-// ---------------------------------------------------------------------------
 
 #[cfg(target_feature = "atomics")]
 use std::future::Future;
