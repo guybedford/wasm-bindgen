@@ -4,10 +4,7 @@ use std::ops::FnMut;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_test::*;
 
-// ---------------------------------------------------------------------------
 // IntoFuture — direct promise.await
-// ---------------------------------------------------------------------------
-
 #[wasm_bindgen_test]
 async fn promise_await_resolve() {
     let p = Promise::resolve(&JsValue::from(42));
@@ -30,10 +27,7 @@ async fn typed_promise_await() {
     assert_eq!(n.value_of(), 99.0);
 }
 
-// ---------------------------------------------------------------------------
 // JsFuture
-// ---------------------------------------------------------------------------
-
 #[wasm_bindgen_test]
 async fn promise_resolve_is_ok_future() {
     let p = Promise::resolve(&JsValue::from(42));
@@ -64,10 +58,7 @@ async fn can_create_multiple_futures_from_same_promise() {
     b.await.unwrap();
 }
 
-// ---------------------------------------------------------------------------
 // future_to_promise
-// ---------------------------------------------------------------------------
-
 #[wasm_bindgen_test]
 async fn ok_future_is_resolved_promise() {
     let p = future_to_promise(async { Ok(JsValue::from(42)) });
@@ -82,10 +73,7 @@ async fn error_future_is_rejected_promise() {
     assert_eq!(e, 42);
 }
 
-// ---------------------------------------------------------------------------
 // spawn_local
-// ---------------------------------------------------------------------------
-
 #[wasm_bindgen]
 extern "C" {
     fn setTimeout(c: &Closure<dyn FnMut()>);
@@ -158,7 +146,6 @@ async fn spawn_local_err_no_exception() {
 }
 
 // join_all
-
 #[wasm_bindgen_test]
 async fn join_all_resolves() {
     use js_sys::{futures::join_all, Number};
@@ -198,7 +185,6 @@ async fn join_all_empty() {
 }
 
 // all_settled
-
 #[wasm_bindgen_test]
 async fn all_settled_collects_all() {
     use js_sys::{futures::all_settled, Number};
@@ -222,7 +208,6 @@ async fn all_settled_collects_all() {
 }
 
 // race
-
 #[wasm_bindgen_test]
 async fn race_returns_first() {
     use js_sys::{futures::race, Number};
@@ -248,7 +233,6 @@ async fn race_rejects_if_first_rejects() {
 }
 
 // any
-
 #[wasm_bindgen_test]
 async fn any_returns_first_success() {
     use js_sys::{futures::any, Number};
@@ -275,7 +259,6 @@ async fn any_rejects_if_all_reject() {
 }
 
 // IntoPromise for Future
-
 #[wasm_bindgen_test]
 async fn join_all_accepts_futures_via_map() {
     use js_sys::futures::join_all;
@@ -292,7 +275,6 @@ async fn join_all_accepts_futures_via_map() {
 }
 
 // join! macro
-
 #[wasm_bindgen_test]
 async fn join_macro_two() {
     use js_sys::{JsString, Number};
@@ -327,7 +309,6 @@ async fn join_macro_single() {
 }
 
 // all_settled! macro
-
 #[wasm_bindgen_test]
 async fn all_settled_macro_mixed() {
     use js_sys::Number;
@@ -341,7 +322,6 @@ async fn all_settled_macro_mixed() {
 }
 
 // Atomics / multithread-specific tests
-
 #[cfg(target_feature = "atomics")]
 use std::future::Future;
 #[cfg(target_feature = "atomics")]
@@ -410,10 +390,7 @@ async fn wait_async_promise_callback_runs_without_wake() {
     done_rx.await.expect("task finished");
 }
 
-// ---------------------------------------------------------------------------
 // JsStream (requires futures-core-03-stream feature)
-// ---------------------------------------------------------------------------
-
 #[cfg(feature = "futures-core-03-stream")]
 #[wasm_bindgen_test]
 async fn can_use_an_async_iterable_as_stream() {

@@ -3,6 +3,7 @@
 //! These types represent fundamental JavaScript values and are designed to be
 //! used as generic type parameters in typed JavaScript collections and APIs.
 
+use crate::convert::FromWasmAbi;
 use crate::convert::UpcastFrom;
 use crate::JsCast;
 use crate::JsGeneric;
@@ -20,7 +21,7 @@ use wasm_bindgen_macro::wasm_bindgen;
 /// Manually implementing this trait is only required for custom thenables or
 /// types which extend Promise. To disable automatic implementation, use the
 /// `#[wasm_bindgen(no_promising)]` attribute.
-pub trait Promising {
+pub trait Promising: JsGeneric + FromWasmAbi {
     /// The type that this value resolves to.
     type Resolution;
 }
