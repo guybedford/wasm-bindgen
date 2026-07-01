@@ -23,7 +23,7 @@ use std::path::{Path, PathBuf};
 use std::{fmt, mem};
 use walrus::{FunctionId, ImportId, MemoryId, Module, TableId, ValType};
 use wasm_bindgen_shared::escape_string;
-use wasm_bindgen_shared::identifier::{is_valid_ident, to_valid_ident};
+use wasm_bindgen_shared::identifier::{is_js_keyword, is_valid_ident, to_valid_ident};
 
 mod binding;
 pub(crate) use binding::{adapter2ts, TypePosition};
@@ -485,16 +485,23 @@ impl<'a> Context<'a> {
     fn hoist_emscripten_export(
         &mut self,
         identifier: &str,
+        export_name: &str,
         value: &str,
         extra_deps: &[&str],
         postset_extra: &str,
         public: bool,
     ) {
+        // The library symbol (and its `EXPORTED_FUNCTIONS` entry) is keyed by the
+        // raw `export_name`, so a reserved-word name like `default` reaches
+        // emscripten intact and gets aliased (`export { $default as default }`).
+        // `identifier` is the JS binding emscripten emits for it (matching
+        // `emscripten_valid_ident`); it's what our generated references use. For
+        // ordinary names the two are equal.
         let mut deps = vec!["$initBindgen".to_string()];
         deps.extend(extra_deps.iter().map(|d| format!("${d}")));
         let deps_fmt: Vec<String> = deps.iter().map(|d| format!("'{d}'")).collect();
         let module_attach = if public {
-            format!("Module['{identifier}'] = {identifier};")
+            format!("Module['{export_name}'] = {identifier};")
         } else {
             String::new()
         };
@@ -502,15 +509,15 @@ impl<'a> Context<'a> {
         let postset_field = if postset.is_empty() {
             String::new()
         } else {
-            format!(",\n    ${identifier}__postset: {postset:?}")
+            format!(",\n    ${export_name}__postset: {postset:?}")
         };
         self.emscripten_library(&format!(
-            "addToLibrary({{\n    ${identifier}: {value},\n    \
-             ${identifier}__deps: [{}]{postset_field}\n}});",
+            "addToLibrary({{\n    ${export_name}: {value},\n    \
+             ${export_name}__deps: [{}]{postset_field}\n}});",
             deps_fmt.join(", "),
         ));
         if public {
-            self.emscripten_runtime_exports.push(identifier.to_string());
+            self.emscripten_runtime_exports.push(export_name.to_string());
         }
     }
 
@@ -535,6 +542,7 @@ impl<'a> Context<'a> {
     ) -> Result<(), Error> {
         let is_namespaced = js_namespace.is_some();
         self.hoist_emscripten_export(
+            identifier,
             identifier,
             value,
             extra_deps,
@@ -2686,6 +2694,19 @@ if (require('worker_threads').isMainThread) {{
                 ExportEntry::Namespace(ns) => {
                     let (identifier, existing) = match ns.id {
                         Some(id) => (id, true),
+                        // In emscripten mode the root is exported under its raw
+                        // `export_name`, which may be a reserved word (`default`)
+                        // or otherwise not a legal binding. emscripten binds it
+                        // under a legalized identifier and aliases the export;
+                        // mirror that legalization here so the references we emit
+                        // (leaf assembly, `Module` attach) match its binding.
+                        None if matches!(self.config.mode, OutputMode::Emscripten)
+                            && (!is_valid_ident(export_name) || is_js_keyword(export_name)) =>
+                        {
+                            let binding = emscripten_valid_ident(export_name);
+                            self.defined_identifiers.entry(binding.clone()).or_insert(1);
+                            (binding, false)
+                        }
                         None => (self.generate_identifier(export_name), false),
                     };
                     // For emscripten output, the root namespace target is the
@@ -2715,6 +2736,7 @@ if (require('worker_threads').isMainThread) {{
                         let leaf_refs: Vec<&str> = leaf_ids.iter().map(String::as_str).collect();
                         self.hoist_emscripten_export(
                             &identifier,
+                            export_name,
                             "{}",
                             &leaf_refs,
                             ns_dst.trim_end(),
@@ -7504,6 +7526,36 @@ fn property_accessor(name: &str) -> String {
             }
         })
         .collect()
+}
+
+/// Mirror of emscripten's `toValidIdentifier` (src/utility.mjs) for the cases
+/// we emit: maps an export name that is not a legal JS binding (a reserved word
+/// like `default`, or a name with illegal characters) to the identifier
+/// emscripten will bind it under. Used for emscripten namespace roots so the
+/// references we generate (leaf assembly, `Module` attach) match the binding
+/// emscripten emits alongside its `export { $name as name }` alias.
+fn emscripten_valid_ident(name: &str) -> String {
+    if is_valid_ident(name) && !is_js_keyword(name) {
+        return name.to_string();
+    }
+    let mut base: String = name
+        .chars()
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || c == '_' || c == '$' {
+                c
+            } else {
+                '_'
+            }
+        })
+        .collect();
+    let starts_ok = base
+        .chars()
+        .next()
+        .is_some_and(|c| c.is_ascii_alphabetic() || c == '_' || c == '$');
+    if !starts_ok || is_js_keyword(&base) {
+        base = format!("${base}");
+    }
+    base
 }
 
 /// Returns whether `name` is a computed-key form, i.e. starts with `[`
