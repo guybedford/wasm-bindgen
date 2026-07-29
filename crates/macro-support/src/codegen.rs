@@ -915,10 +915,10 @@ impl TryToTokens for ast::Export {
                     })
                 }
             } else if self.function.tokio {
-                // Drive the exported future on tokio's emscripten event-loop
-                // runtime (so `tokio::spawn`, timers, and IO inside it work),
-                // bridging its outcome to the returned `Promise`. `schedule`
-                // only queues the root; `drive` runs it before we return.
+                // Drive the exported future on the ambient tokio hosted
+                // event-loop runtime (so `tokio::spawn`, timers, and IO
+                // inside it work), bridging its outcome to the returned
+                // `Promise`. `schedule` drives before returning when safe.
                 let promise = if ast::use_js_sys_futures() {
                     quote! { #js_sys::Promise }
                 } else {
@@ -940,7 +940,7 @@ impl TryToTokens for ast::Export {
                             let __wbg_fut = __wbg_fut
                                 .take()
                                 .expect("Promise executor invoked more than once");
-                            ::tokio::emscripten::event_loop::schedule(__wbg_fut, move |__wbg_out| {
+                            #wasm_bindgen_futures::tokio::schedule(__wbg_fut, move |__wbg_out| {
                                 match __wbg_out {
                                     ::core::result::Result::Ok(::core::result::Result::Ok(__wbg_val)) => {
                                         let _ = resolve.call(&#wasm_bindgen::JsValue::UNDEFINED, (&__wbg_val,));
@@ -956,7 +956,6 @@ impl TryToTokens for ast::Export {
                                     }
                                 }
                             });
-                            ::tokio::emscripten::event_loop::drive();
                         }).into()
                     }
                 }
