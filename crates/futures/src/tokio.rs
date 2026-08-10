@@ -1,7 +1,9 @@
-//! The thread's ambient tokio hosted event-loop runtime, shared by all
-//! `#[wasm_bindgen(tokio)]` exports so their roots run on one runtime: one
+//! Tokio hosted event-loop runtimes for `#[wasm_bindgen(tokio)]` exports.
+//!
+//! By default all such exports share the thread's ambient runtime: one
 //! timer arm, one I/O driver, one keepalive count, and `tokio::spawn` from
-//! any of them lands on the same scheduler.
+//! any of them lands on the same scheduler. With `tokio = "isolated"` each
+//! invocation instead owns a fresh runtime ([`schedule_isolated`]).
 
 use core::future::Future;
 use std::cell::OnceCell;
@@ -54,4 +56,32 @@ where
             rt.drive();
         }
     })
+}
+
+/// Schedules `future` as the root of a fresh hosted runtime owned by this
+/// call, with the same drive semantics as [`schedule`]. The runtime's
+/// reactor, timers, and any tasks spawned inside `future` are fully
+/// isolated from other invocations — for multiplexed hosts (e.g. Cloudflare
+/// Workers) where one invocation's event loop must not perform I/O on
+/// behalf of another's context.
+///
+/// The runtime lives until the root settles (the completion task holds it),
+/// then tears down with native `Runtime` drop semantics: spawned tasks
+/// still in flight are dropped and the reactor is closed.
+pub fn schedule_isolated<F, C>(future: F, on_complete: C)
+where
+    F: Future + 'static,
+    F::Output: 'static,
+    C: FnOnce(Result<F::Output, JoinError>) + 'static,
+{
+    let rt = ::tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build_hosted_event_loop_runtime()
+        .expect("failed to build isolated tokio hosted runtime");
+    rt.schedule(future, on_complete);
+    if ::tokio::runtime::Handle::try_current().is_err() {
+        rt.drive();
+    }
+    // `rt` drops here; the completer task and armed host callbacks keep the
+    // runtime alive until the root settles.
 }

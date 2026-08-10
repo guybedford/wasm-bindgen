@@ -914,15 +914,21 @@ impl TryToTokens for ast::Export {
                         #call
                     })
                 }
-            } else if self.function.tokio {
-                // Drive the exported future on the ambient tokio hosted
-                // event-loop runtime (so `tokio::spawn`, timers, and IO
-                // inside it work), bridging its outcome to the returned
-                // `Promise`. `schedule` drives before returning when safe.
+            } else if let Some(tokio_mode) = self.function.tokio {
+                // Drive the exported future on a tokio hosted event-loop
+                // runtime (so `tokio::spawn`, timers, and IO inside it
+                // work), bridging its outcome to the returned `Promise`:
+                // the thread's shared ambient runtime, or with
+                // `tokio = "isolated"` a fresh runtime owned by this
+                // invocation. `schedule` drives before returning when safe.
                 let promise = if ast::use_js_sys_futures() {
                     quote! { #js_sys::Promise }
                 } else {
                     quote! { #wasm_bindgen_futures::js_sys::Promise }
+                };
+                let schedule = match tokio_mode {
+                    ast::TokioMode::Ambient => quote! { schedule },
+                    ast::TokioMode::Isolated => quote! { schedule_isolated },
                 };
                 call = quote! {
                     {
@@ -940,7 +946,7 @@ impl TryToTokens for ast::Export {
                             let __wbg_fut = __wbg_fut
                                 .take()
                                 .expect("Promise executor invoked more than once");
-                            #wasm_bindgen_futures::tokio::schedule(__wbg_fut, move |__wbg_out| {
+                            #wasm_bindgen_futures::tokio::#schedule(__wbg_fut, move |__wbg_out| {
                                 match __wbg_out {
                                     ::core::result::Result::Ok(::core::result::Result::Ok(__wbg_val)) => {
                                         let _ = resolve.call(&#wasm_bindgen::JsValue::UNDEFINED, (&__wbg_val,));
