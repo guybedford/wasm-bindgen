@@ -567,12 +567,26 @@ pub trait JsGeneric:
     + Upcast<Self>
     + Upcast<JsValue>
     + JsCast
+    // POC: carry the direct marshalling traits so `T: JsGeneric` pass-through
+    // code keeps compiling when a binding it calls is per-monomorphisation
+    // rather than erased. Every JS type already implements these.
+    + FromWasmAbi
+    + IntoWasmAbi
+    + crate::describe::WasmDescribe
     + 'static
 {
 }
 
-impl<T: ErasableGeneric<Repr = JsValue> + UpcastFrom<T> + Upcast<JsValue> + JsCast + 'static>
-    JsGeneric for T
+impl<
+        T: ErasableGeneric<Repr = JsValue>
+            + UpcastFrom<T>
+            + Upcast<JsValue>
+            + JsCast
+            + FromWasmAbi
+            + IntoWasmAbi
+            + crate::describe::WasmDescribe
+            + 'static,
+    > JsGeneric for T
 {
 }
 

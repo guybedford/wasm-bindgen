@@ -357,6 +357,7 @@ where
     F: Future<Output = Result<T, JsValue>> + 'static,
     T: Promising + FromWasmAbi + JsGeneric,
     <T as Promising>::Resolution: JsGeneric,
+    for<'__wbg> &'__wbg T: wasm_bindgen::convert::IntoWasmAbi,
 {
     let mut future = Some(future);
 
