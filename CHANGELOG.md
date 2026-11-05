@@ -26,7 +26,9 @@
   with `new_event_loop`, for hosts that keep one loop per long-lived I/O
   context such as a Durable Object, and `spawn_extending`, which spawns a
   task on the calling task's loop that holds the loop alive until it
-  finishes, so work handed to `ctx.waitUntil` outlives an isolated root.
+  finishes, so work handed to `ctx.waitUntil` outlives an isolated root, and
+  `current_event_loop`, the loop the calling task runs on, for a host
+  callback to drive directly.
 
 ### Changed
 

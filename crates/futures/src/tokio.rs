@@ -101,7 +101,10 @@ fn register(rt: &Rc<LocalEventLoop>) {
 }
 
 /// The event loop the current task runs on, if this module scheduled on it.
-fn current_loop() -> Option<Rc<LocalEventLoop>> {
+/// A host callback can drive it directly ([`LocalEventLoop::drive`]) to run
+/// work a wake would otherwise defer to a later host turn, such as cancelling
+/// a root from a JS event that is the request's last turn.
+pub fn current_event_loop() -> Option<Rc<LocalEventLoop>> {
     let id = Handle::try_current().ok()?.id();
     LOOPS.with(|loops| loops.borrow().iter().find(|(i, _)| *i == id)?.1.upgrade())
 }
@@ -234,7 +237,7 @@ where
     F: Future + 'static,
     F::Output: 'static,
 {
-    let Some(rt) = current_loop() else {
+    let Some(rt) = current_event_loop() else {
         return Err(future);
     };
     let hold = Hold(Some(rt.clone()));
