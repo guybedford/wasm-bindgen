@@ -21,6 +21,13 @@
   `async` imports and `experimental_generic_mono` generics. The safe integer range is checked under debug assertions.
   [#5455](https://github.com/wasm-bindgen/wasm-bindgen/pull/5455)
 
+* `wasm_bindgen_futures::tokio` (experimental, Emscripten) adds
+  `schedule_on`, which schedules a root on a caller-owned event loop built
+  with `new_event_loop`, for hosts that keep one loop per long-lived I/O
+  context such as a Durable Object, and `spawn_extending`, which spawns a
+  task on the calling task's loop that holds the loop alive until it
+  finishes, so work handed to `ctx.waitUntil` outlives an isolated root.
+
 ### Changed
 
 * Awaiting a `js_sys::Promise<T, E>` converts the rejection reason through
@@ -41,6 +48,11 @@
   [#5453](https://github.com/wasm-bindgen/wasm-bindgen/pull/5453)
 
 ### Fixed
+
+* A `#[wasm_bindgen(experimental_tokio)]` root scheduled from inside another
+  event loop's drive, such as an `"isolated"` export called from a JS import
+  of an ambient task, is now driven: it is spawned once that drive returns,
+  where its wake was previously folded into the other loop's drive.
 
 ### Removed
 

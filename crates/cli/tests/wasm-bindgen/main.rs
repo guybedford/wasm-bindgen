@@ -3828,6 +3828,72 @@ fn emscripten_end_to_end() {
                 ms * 2
             }
 
+            // Returns at once, handing `wait_until` work that outlives the
+            // root on its isolated loop (Workers `ctx.waitUntil`).
+            #[wasm_bindgen(experimental_tokio = "isolated")]
+            pub async fn tokio_isolated_extend(ms: u32, wait_until: js_sys::Function) -> u32 {
+                let task = wasm_bindgen_futures::tokio::spawn_extending(async move {
+                    tokio::time::sleep(std::time::Duration::from_millis(ms as u64)).await;
+                    ms + 1
+                })
+                .ok()
+                .expect("inside an isolated loop");
+                let promise = wasm_bindgen_futures::future_to_promise(async move {
+                    Ok(task.await.unwrap().into())
+                });
+                wait_until.call1(&JsValue::NULL, &promise).unwrap();
+                0
+            }
+
+            #[wasm_bindgen]
+            pub fn extend_outside_loop() -> bool {
+                wasm_bindgen_futures::tokio::spawn_extending(async {}).is_err()
+            }
+
+            // A host-owned loop per instance (a Durable Object's), whose
+            // roots resolve with the id of the runtime a spawned task ran on.
+            #[wasm_bindgen]
+            pub struct Instance {
+                rt: std::rc::Rc<wasm_bindgen_futures::tokio::LocalEventLoop>,
+            }
+
+            #[wasm_bindgen]
+            impl Instance {
+                #[wasm_bindgen(constructor)]
+                pub fn new() -> Instance {
+                    let rt = wasm_bindgen_futures::tokio::new_event_loop().unwrap();
+                    Instance { rt: std::rc::Rc::new(rt) }
+                }
+
+                pub fn sleep(&self, ms: u32) -> js_sys::Promise {
+                    js_sys::Promise::new(&mut |resolve, _reject| {
+                        wasm_bindgen_futures::tokio::schedule_on(
+                            &self.rt,
+                            async move {
+                                tokio::time::sleep(std::time::Duration::from_millis(ms as u64)).await;
+                                tokio::spawn(async {
+                                    tokio::runtime::Handle::current().id().to_string()
+                                })
+                                .await
+                                .unwrap()
+                            },
+                            move |out| {
+                                resolve.call1(&JsValue::NULL, &out.unwrap().into()).unwrap();
+                            },
+                        );
+                    })
+                }
+            }
+
+            // Calls `f` from inside an ambient task, so a root `f` schedules
+            // on another loop is scheduled mid-drive.
+            #[wasm_bindgen(experimental_tokio)]
+            pub async fn tokio_reenter(f: js_sys::Function) -> JsValue {
+                tokio::time::sleep(std::time::Duration::from_millis(1)).await;
+                let p: js_sys::Promise = f.call0(&JsValue::NULL).unwrap().into();
+                wasm_bindgen_futures::JsFuture::from(p).await.unwrap()
+            }
+
             fn main() {
                 println!("main ran");
             }
@@ -3890,6 +3956,27 @@ fn emscripten_end_to_end() {
         assert(Date.now() - t0 >= 35, 'tokio timers actually waited');
         // The ambient loop is reusable after its roots settle.
         assert(await m.tokio_sleep_spawn(1) === 2, 'ambient loop reuse');
+
+        // Extended work keeps the isolated loop up after its root settles.
+        let extended;
+        const t1 = Date.now();
+        assert(await m.tokio_isolated_extend(50, (p) => { extended = p; }) === 0, 'extending root');
+        let settled = false;
+        extended.then(() => { settled = true; });
+        await null;
+        assert(!settled, 'root settled before its extension');
+        assert(await extended === 51, 'extended task completed');
+        assert(Date.now() - t1 >= 45, 'extended timer actually waited');
+        assert(m.extend_outside_loop(), 'spawn_extending outside a loop errs');
+
+        // Host-owned loops: one per instance, each scheduled on directly or
+        // from inside another loop's drive.
+        const i1 = new m.Instance(), i2 = new m.Instance();
+        const [x, y, x2] = await Promise.all([i1.sleep(10), i2.sleep(10), i1.sleep(5)]);
+        assert(x === x2 && x !== y, `one loop per instance ${x} ${y} ${x2}`);
+        assert(await m.tokio_reenter(() => i2.sleep(5)) === y, 'scheduled from another drive');
+        i1.free();
+        i2.free();
 
         console.log('ok');
         "#,
